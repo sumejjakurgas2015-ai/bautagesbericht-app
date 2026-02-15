@@ -1,0 +1,83 @@
+﻿<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Bautagesbericht</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; max-width: 900px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    label { font-weight: 600; display: block; margin-bottom: 6px; }
+    input, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; }
+    textarea { min-height: 110px; }
+    .card { border: 1px solid #e6e6e6; border-radius: 12px; padding: 16px; }
+    .btn { padding: 10px 14px; border-radius: 10px; border: 0; cursor: pointer; }
+    .btn-primary { background: #111; color: #fff; }
+    .btn-link { background: transparent; text-decoration: underline; }
+    .top { display:flex; justify-content: space-between; align-items:center; margin-bottom: 14px; }
+    .flash { padding: 10px; border-radius: 10px; margin: 10px 0; }
+    .success { background: #e7f8ee; border: 1px solid #bde7cb; }
+    .error { background: #fdecec; border: 1px solid #f5b9b9; }
+  </style>
+</head>
+<body>
+
+  <div class="top">
+    <h2>Bautagesbericht</h2>
+    <a href="/list"><button class="btn btn-link">Liste ansehen</button></a>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, msg in messages %}
+        <div class="flash {{ category }}">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <div class="card">
+    <form method="post">
+      <div class="row">
+        <div>
+          <label>Datum</label>
+          <input type="date" name="datum">
+        </div>
+        <div>
+          <label>Wetter</label>
+          <input type="text" name="wetter" placeholder="z.B. sonnig, kalt, Regen">
+        </div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <label>Baustelle (obavezno)</label>
+        <input type="text" name="baustelle" placeholder="z.B. Mannheim, Straße ...">
+      </div>
+
+      <div style="margin-top:12px;">
+        <label>Team / Personal</label>
+        <input type="text" name="team" placeholder="z.B. 4 Mann + 1 Baggerfahrer">
+      </div>
+
+      <div style="margin-top:12px;">
+        <label>Arbeiten</label>
+        <textarea name="arbeit" placeholder="Šta je rađeno danas..."></textarea>
+      </div>
+
+      <div style="margin-top:12px;">
+        <label>Material / Lieferung</label>
+        <textarea name="material" placeholder="Materijal, dostava, skladište..."></textarea>
+      </div>
+
+      <div style="margin-top:12px;">
+        <label>Bemerkung</label>
+        <textarea name="bemerkung" placeholder="Npr. Kabelfehler, čekanje montaže, Absperrung..."></textarea>
+      </div>
+
+      <div style="margin-top:14px;">
+        <button class="btn btn-primary" type="submit">Speichern</button>
+      </div>
+    </form>
+  </div>
+
+</body>
+</html>

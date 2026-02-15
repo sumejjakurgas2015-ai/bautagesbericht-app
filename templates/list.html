@@ -1,0 +1,93 @@
+﻿<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Liste - Bautagesbericht</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; max-width: 1100px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { padding: 10px; border-bottom: 1px solid #eee; text-align:left; }
+    th { background:#fafafa; }
+    a { color:#111; }
+    .btn { padding: 8px 12px; border-radius: 10px; border: 0; cursor: pointer; }
+    .btn-danger { background:#e53935; color:#fff; }
+    .btn-link { background: transparent; text-decoration: underline; }
+    .card { border: 1px solid #e6e6e6; border-radius: 12px; padding: 16px; margin-top: 12px; }
+    .flash { padding: 10px; border-radius: 10px; margin: 10px 0; }
+    .success { background: #e7f8ee; border: 1px solid #bde7cb; }
+    .error { background: #fdecec; border: 1px solid #f5b9b9; }
+  </style>
+</head>
+<body>
+
+  <div style="display:flex; justify-content: space-between; align-items:center;">
+    <h2>Liste - Bautagesberichte</h2>
+    <a href="/"><button class="btn btn-link">+ Neuer Bericht</button></a>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, msg in messages %}
+        <div class="flash {{ category }}">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  {% if detail %}
+    <div class="card">
+      <h3>Bericht #{{ detail["id"] }} — {{ detail["baustelle"] }}</h3>
+      <p><b>Erstellt:</b> {{ detail["created_at"] }}</p>
+      <p><b>Datum:</b> {{ detail["datum"] or "-" }}</p>
+      <p><b>Wetter:</b> {{ detail["wetter"] or "-" }}</p>
+      <p><b>Team:</b> {{ detail["team"] or "-" }}</p>
+
+      <p><b>Arbeiten:</b><br>{{ (detail["arbeit"] or "-")|replace('\n','<br>')|safe }}</p>
+      <p><b>Material:</b><br>{{ (detail["material"] or "-")|replace('\n','<br>')|safe }}</p>
+      <p><b>Bemerkung:</b><br>{{ (detail["bemerkung"] or "-")|replace('\n','<br>')|safe }}</p>
+
+      <form method="post" action="/delete/{{ detail['id'] }}" onsubmit="return confirm('Obrisati izvještaj?');">
+        <button class="btn btn-danger" type="submit">Delete</button>
+      </form>
+    </div>
+  {% endif %}
+
+  {% if reports %}
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Erstellt</th>
+          <th>Datum</th>
+          <th>Baustelle</th>
+          <th>Wetter</th>
+          <th>Aktion</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reports %}
+          <tr>
+            <td>{{ r["id"] }}</td>
+            <td>{{ r["created_at"] }}</td>
+            <td>{{ r["datum"] or "-" }}</td>
+            <td>{{ r["baustelle"] }}</td>
+            <td>{{ r["wetter"] or "-" }}</td>
+            <td>
+              <a href="/report/{{ r['id'] }}">Details</a>
+              &nbsp; | &nbsp;
+              <form style="display:inline" method="post" action="/delete/{{ r['id'] }}" onsubmit="return confirm('Obrisati izvještaj?');">
+                <button class="btn btn-danger" type="submit">Delete</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    {% if not detail %}
+      <p>Nema izvještaja još. Idi na “Neuer Bericht”.</p>
+    {% endif %}
+  {% endif %}
+
+</body>
+</html>
