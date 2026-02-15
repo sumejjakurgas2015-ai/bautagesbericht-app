@@ -90,6 +90,7 @@ def list_reports():
     return render_template("list.html", reports=reports)
 
 
+
 @app.route("/report/<int:report_id>")
 def report_detail(report_id):
     conn = get_db()
