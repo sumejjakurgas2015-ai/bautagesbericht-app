@@ -1,17 +1,20 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
-import sqlite3
+import os
+import psycopg2
+import psycopg2.extras
 from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = "change-this-secret"  # za flash poruke
 
-DB_NAME = "bautagesbericht.db"
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 
 def get_db():
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
-    return conn
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL nije postavljen (Render Environment).")
+    return psycopg2.connect(DATABASE_URL)
+
 
 
 def init_db():
@@ -19,8 +22,8 @@ def init_db():
     cur = conn.cursor()
     cur.execute("""
         CREATE TABLE IF NOT EXISTS reports (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            created_at TEXT NOT NULL,
+            id SERIAL PRIMARY KEY,
+            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
             datum TEXT,
             baustelle TEXT,
             wetter TEXT,
@@ -31,7 +34,9 @@ def init_db():
         )
     """)
     conn.commit()
+    cur.close()
     conn.close()
+
 
 
 init_db()

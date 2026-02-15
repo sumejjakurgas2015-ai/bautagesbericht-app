@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Bautagesbericht Details</title>
+</head>
+<body style="max-width:900px;margin:30px auto;font-family:Arial;">
+
+  <a href="{{ url_for('list_reports') }}">← Nazad na listu</a>
+
+  <h2>Bericht #{{ report["id"] }} — {{ report["baustelle"] }}</h2>
+
+  <p><b>Erstellt:</b> {{ report["created_at"] }}</p>
+  <p><b>Datum:</b> {{ report["datum"] }}</p>
+  <p><b>Wetter:</b> {{ report["wetter"] }}</p>
+  <p><b>Team:</b> {{ report["team"] }}</p>
+
+  <h3>Arbeiten</h3>
+  <pre style="white-space:pre-wrap;">{{ report["arbeit"] }}</pre>
+
+  <h3>Material</h3>
+  <pre style="white-space:pre-wrap;">{{ report["material"] }}</pre>
+
+  <h3>Bemerkung</h3>
+  <pre style="white-space:pre-wrap;">{{ report["bemerkung"] }}</pre>
+
+  <form method="post" action="{{ url_for('delete_report', report_id=report['id']) }}">
+    <button style="padding:8px 14px;">Delete</button>
+  </form>
+
+</body>
+</html>
