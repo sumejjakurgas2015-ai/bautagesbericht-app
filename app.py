@@ -60,12 +60,10 @@ def index():
         conn = get_db()
         cur = conn.cursor()
         cur.execute("""
-            INSERT INTO reports (created_at, datum, baustelle, wetter, team, arbeit, material, bemerkung)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            datum, baustelle, wetter, team, arbeit, material, bemerkung
-        ))
+    INSERT INTO reports (datum, baustelle, wetter, team, arbeit, material, bemerkung)
+    VALUES (%s, %s, %s, %s, %s, %s, %s)
+""", (datum, baustelle, wetter, team, arbeit, material, bemerkung))
+
         conn.commit()
         conn.close()
 
@@ -78,9 +76,11 @@ def index():
 @app.route("/list")
 def list_reports():
     conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM reports ORDER BY id DESC")
-    reports = cur.fetchall()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+cur.execute("SELECT * FROM reports ORDER BY id DESC")
+reports = cur.fetchall()
+cur.close()
+
     conn.close()
     return render_template("list.html", reports=reports)
 
@@ -88,10 +88,11 @@ def list_reports():
 @app.route("/report/<int:report_id>")
 def report_detail(report_id):
     conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM reports WHERE id = ?", (report_id,))
-    report = cur.fetchone()
-    conn.close()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+cur.execute("SELECT * FROM reports WHERE id = %s", (report_id,))
+report = cur.fetchone()
+cur.close()
+
 
     if report is None:
         flash("Izvještaj nije pronađen.", "error")
@@ -104,7 +105,8 @@ def report_detail(report_id):
 def delete_report(report_id):
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("DELETE FROM reports WHERE id = ?", (report_id,))
+    cur.execute("DELETE FROM reports WHERE id = %s", (report_id,))
+
     conn.commit()
     conn.close()
     flash("Izvještaj obrisan 🗑️", "success")
