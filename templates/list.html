@@ -1,4 +1,7 @@
-﻿<!doctype html>
+﻿{% extends "base.html" %}
+{% block content %}
+
+<!doctype html>
 <html lang="de">
 <head>
   <meta charset="utf-8" />
@@ -46,7 +49,7 @@
       <p><b>Material:</b><br>{{ (detail["material"] or "-")|replace('\n','<br>')|safe }}</p>
       <p><b>Bemerkung:</b><br>{{ (detail["bemerkung"] or "-")|replace('\n','<br>')|safe }}</p>
 
-      <form method="post" action="/delete/{{ detail['id'] }}" onsubmit="return confirm('Obrisati izvještaj?');">
+      <form method="post" action="/delete/{{ detail['id'] }}" onsubmit="return confirm('Noch keine Berichte vorhanden.');">
         <button class="btn btn-danger" type="submit">Delete</button>
       </form>
     </div>
@@ -73,10 +76,12 @@
             <td>{{ r["baustelle"] }}</td>
             <td>{{ r["wetter"] or "-" }}</td>
             <td>
-              <a href="/report/{{ r['id'] }}">Details</a>
+              <a href="{{ url_for('report_detail', report_id=r['id']) }}" style="color:#3b82f6; font-weight:700; text-decoration:none;">
+  Anzeigen
+</a>
               &nbsp; | &nbsp;
-              <form style="display:inline" method="post" action="/delete/{{ r['id'] }}" onsubmit="return confirm('Obrisati izvještaj?');">
-                <button class="btn btn-danger" type="submit">Delete</button>
+              <form style="display:inline" method="post" action="/Löchen/{{ r['id'] }}" onsubmit="return confirm('Bericht wirklich löschen?');">
+                <button class="btn btn-danger" type="submit">Löschen</button>
               </form>
             </td>
           </tr>
@@ -85,9 +90,10 @@
     </table>
   {% else %}
     {% if not detail %}
-      <p>Nema izvještaja još. Idi na “Neuer Bericht”.</p>
+      <p>Noch keine Berichte vorhanden. bitte einen neuen Bericht erstellen.”</p>
     {% endif %}
   {% endif %}
 
 </body>
 </html>
+{% endblock %}

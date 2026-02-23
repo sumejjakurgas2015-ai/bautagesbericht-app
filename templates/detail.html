@@ -1,3 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<a href="{{ url_for('report_pdf', report_id=report['id']) }}">
+  <button type="button">Als PDF speichern</button>
+</a>
+
 <!doctype html>
 <html>
 <head>
@@ -9,6 +15,7 @@
   <a href="{{ url_for('list_reports') }}">← Nazad na listu</a>
 
   <h2>Bericht #{{ report["id"] }} — {{ report["baustelle"] }}</h2>
+  <a href="{{ url_for('report_pdf', report_id=report.id) }}">
 
   <p><b>Erstellt:</b> {{ report["created_at"] }}</p>
   <p><b>Datum:</b> {{ report["datum"] }}</p>
@@ -30,3 +37,4 @@
 
 </body>
 </html>
+{% endblock %}

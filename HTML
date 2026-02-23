@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title or "Bautagesbericht" }}</title>
+  <style>
+    :root{
+      --bg:#0b1220;
+      --card:#0f1b33;
+      --muted:#9fb0d0;
+      --text:#e9efff;
+      --accent:#4f7cff;
+      --accent2:#22c55e;
+      --danger:#ef4444;
+      --border: rgba(255,255,255,.08);
+      --shadow: 0 12px 30px rgba(0,0,0,.35);
+      --radius: 18px;
+    }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 600px at 10% 0%, #162a55 0%, transparent 60%),
+                  radial-gradient(900px 500px at 90% 10%, #143a2c 0%, transparent 55%),
+                  var(--bg);
+      color:var(--text);
+    }
+    .wrap{max-width: 960px; margin: 22px auto; padding: 0 16px;}
+    .topbar{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px; padding:14px 16px; border:1px solid var(--border);
+      border-radius: var(--radius); background: rgba(15,27,51,.8);
+      box-shadow: var(--shadow); backdrop-filter: blur(8px);
+      position: sticky; top: 10px; z-index: 5;
+    }
+    .brand{display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:.2px;}
+    .dot{width:10px; height:10px; border-radius:999px; background: var(--accent);}
+    .nav a{
+      color:var(--text); text-decoration:none; font-weight:600;
+      opacity:.9; padding:10px 12px; border-radius: 12px;
+      border:1px solid transparent;
+    }
+    .nav a:hover{border-color: var(--border); background: rgba(255,255,255,.03);}
+    .card{
+      margin-top: 16px;
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(15,27,51,.72);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card-h{padding:16px 18px; border-bottom:1px solid var(--border);}
+    .card-b{padding:16px 18px;}
+    .grid{display:grid; gap:14px;}
+    @media (min-width: 760px){ .grid.two{grid-template-columns: 1fr 1fr;} }
+
+    label{display:block; font-weight:700; margin-bottom:8px;}
+    input, textarea{
+      width:100%; box-sizing:border-box;
+      background: rgba(255,255,255,.04);
+      border:1px solid var(--border);
+      color:var(--text);
+      border-radius: 14px;
+      padding: 12px 12px;
+      outline:none;
+    }
+    textarea{min-height: 120px; resize: vertical;}
+    input:focus, textarea:focus{border-color: rgba(79,124,255,.7); box-shadow: 0 0 0 4px rgba(79,124,255,.15);}
+
+    .btns{display:flex; flex-wrap:wrap; gap:10px; margin-top: 14px;}
+    .btn{
+      appearance:none; border:none; cursor:pointer;
+      padding: 12px 14px; border-radius: 14px;
+      font-weight:800; letter-spacing:.2px;
+      background: var(--accent); color: white;
+    }
+    .btn.secondary{background: rgba(255,255,255,.08); border:1px solid var(--border);}
+    .btn.danger{background: var(--danger);}
+    .flash{
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border:1px solid var(--border);
+      background: rgba(34,197,94,.10);
+      color: #d8ffe6;
+    }
+    .table{width:100%; border-collapse: collapse;}
+    .table th, .table td{padding: 12px 10px; border-bottom: 1px solid var(--border); text-align:left; vertical-align:top;}
+    .muted{color: var(--muted);}
+    .small{font-size: 13px; opacity:.9}
+    .right{float:right}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <span class="dot"></span>
+        <span>Bautagesbericht</span>
+      </div>
+      <div class="nav">
+        <a href="{{ url_for('index') }}">Neu</a>
+        <a href="{{ url_for('list_reports') }}">Liste</a>
+      </div>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="flash">{{ messages[0] }}</div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+    <div class="muted small" style="margin:16px 2px 30px 2px;">
+      Lokal: {{ request.host }} · {{ "Postgres" if (env and env.get("DATABASE_URL")) else "SQLite" }}
+    </div>
+  </div>
+</body>
+</html>
