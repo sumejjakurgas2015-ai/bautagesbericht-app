@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>{% block title %}Bautagesbericht{% endblock %}</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; max-width: 900px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    label { font-weight: 600; display: block; margin-bottom: 6px; }
+    input, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; }
+    textarea { min-height: 110px; }
+    .card { border: 1px solid #e6e6e6; border-radius: 12px; padding: 16px; }
+    .btn { padding: 10px 14px; border-radius: 10px; border: 0; cursor: pointer; }
+    .btn-primary { background: #111; color: #fff; }
+    .btn-link { background: transparent; text-decoration: underline; }
+    .top { display:flex; justify-content: space-between; align-items:center; margin-bottom: 14px; }
+    .flash { padding: 10px; border-radius: 10px; margin: 10px 0; }
+    .success { background: #e7f8ee; border: 1px solid #bde7cb; }
+    .error { background: #fdecec; border: 1px solid #f5b9b9; }
+  </style>
+</head>
+<body>
+  {% block content %}{% endblock %}
+</body>
+</html>
