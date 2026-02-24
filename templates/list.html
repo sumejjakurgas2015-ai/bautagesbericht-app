@@ -11,7 +11,7 @@
   .card { border: 1px solid #e6e6e6; border-radius: 12px; padding: 16px; margin-top: 12px; }
 </style>
 
-<div style="display:flex; justify-content: space-between; align-items:center;">
+<div class="top">
   <h2>Liste – Bautagesberichte</h2>
   <a href="/"><button class="btn btn-link" type="button">+ Neuer Bericht</button></a>
 </div>
@@ -23,24 +23,6 @@
     {% endfor %}
   {% endif %}
 {% endwith %}
-
-{% if detail %}
-  <div class="card">
-    <h3>Bericht #{{ detail["id"] }} — {{ detail["baustelle"] }}</h3>
-    <p><b>Erstellt:</b> {{ detail["created_at"] }}</p>
-    <p><b>Datum:</b> {{ detail["datum"] or "-" }}</p>
-    <p><b>Wetter:</b> {{ detail["wetter"] or "-" }}</p>
-    <p><b>Team:</b> {{ detail["team"] or "-" }}</p>
-
-    <p><b>Arbeiten:</b><br>{{ (detail["arbeit"] or "-")|replace('\n','<br>')|safe }}</p>
-    <p><b>Material:</b><br>{{ (detail["material"] or "-")|replace('\n','<br>')|safe }}</p>
-    <p><b>Bemerkung:</b><br>{{ (detail["bemerkung"] or "-")|replace('\n','<br>')|safe }}</p>
-
-    <form method="post" action="/delete/{{ detail['id'] }}" onsubmit="return confirm('Bericht wirklich löschen?');">
-      <button class="btn btn-danger" type="submit">Löschen</button>
-    </form>
-  </div>
-{% endif %}
 
 {% if reports %}
   <table>
@@ -67,7 +49,7 @@
               Anzeigen
             </a>
             &nbsp; | &nbsp;
-            <form style="display:inline" method="post" action="/delete/{{ r['id'] }}" onsubmit="return confirm('Bericht wirklich löschen?');">
+            <form style="display:inline" method="post" action="{{ url_for('delete_report', report_id=r['id']) }}" onsubmit="return confirm('Bericht wirklich löschen?');">
               <button class="btn btn-danger" type="submit">Löschen</button>
             </form>
           </td>
@@ -76,9 +58,7 @@
     </tbody>
   </table>
 {% else %}
-  {% if not detail %}
-    <p>Noch keine Berichte vorhanden. Bitte einen neuen Bericht erstellen.</p>
-  {% endif %}
+  <p>Noch keine Berichte vorhanden. Bitte einen neuen Bericht erstellen.</p>
 {% endif %}
 
 {% endblock %}

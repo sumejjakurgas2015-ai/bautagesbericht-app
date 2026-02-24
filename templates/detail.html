@@ -1,40 +1,26 @@
 {% extends "base.html" %}
 {% block content %}
-<a href="{{ url_for('report_pdf', report_id=report['id']) }}">
-  <button type="button">Als PDF speichern</button>
-</a>
 
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Bautagesbericht Details</title>
-</head>
-<body style="max-width:900px;margin:30px auto;font-family:Arial;">
+<div class="top">
+  <h2>Bericht anzeigen</h2>
+  <a href="/list"><button class="btn btn-link" type="button">Zur Liste</button></a>
+</div>
 
-  <a href="{{ url_for('list_reports') }}">← Nazad na listu</a>
-
-  <h2>Bericht #{{ report["id"] }} — {{ report["baustelle"] }}</h2>
-  <a href="{{ url_for('report_pdf', report_id=report.id) }}">
-
+<div class="card">
+  <p><b>ID:</b> {{ report["id"] }}</p>
   <p><b>Erstellt:</b> {{ report["created_at"] }}</p>
-  <p><b>Datum:</b> {{ report["datum"] }}</p>
-  <p><b>Wetter:</b> {{ report["wetter"] }}</p>
-  <p><b>Team:</b> {{ report["team"] }}</p>
+  <p><b>Datum:</b> {{ report["datum"] or "-" }}</p>
+  <p><b>Baustelle:</b> {{ report["baustelle"] }}</p>
+  <p><b>Wetter:</b> {{ report["wetter"] or "-" }}</p>
+  <p><b>Team:</b> {{ report["team"] or "-" }}</p>
 
-  <h3>Arbeiten</h3>
-  <pre style="white-space:pre-wrap;">{{ report["arbeit"] }}</pre>
+  <p><b>Arbeiten:</b><br>{{ (report["arbeit"] or "-")|replace('\n','<br>')|safe }}</p>
+  <p><b>Material / Lieferung:</b><br>{{ (report["material"] or "-")|replace('\n','<br>')|safe }}</p>
+  <p><b>Bemerkung:</b><br>{{ (report["bemerkung"] or "-")|replace('\n','<br>')|safe }}</p>
 
-  <h3>Material</h3>
-  <pre style="white-space:pre-wrap;">{{ report["material"] }}</pre>
-
-  <h3>Bemerkung</h3>
-  <pre style="white-space:pre-wrap;">{{ report["bemerkung"] }}</pre>
-
-  <form method="post" action="{{ url_for('delete_report', report_id=report['id']) }}">
-    <button style="padding:8px 14px;">Delete</button>
+  <form method="post" action="{{ url_for('delete_report', report_id=report['id']) }}" onsubmit="return confirm('Bericht wirklich löschen?');">
+    <button class="btn btn-danger" type="submit">Löschen</button>
   </form>
+</div>
 
-</body>
-</html>
 {% endblock %}

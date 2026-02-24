@@ -1,7 +1,5 @@
 import os
 import sqlite3
-from datetime import datetime
-from urllib.parse import urlparse
 
 import psycopg2
 import psycopg2.extras
@@ -10,25 +8,18 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
 
-# Lokalno: koristi SQLite fajl (tvoj postojeći .db)
+# Lokalno: SQLite fajl
 SQLITE_PATH = os.path.join(os.path.dirname(__file__), "bautagesbericht.db")
 
 
-def is_postgres():
+def is_postgres() -> bool:
     return bool(os.environ.get("DATABASE_URL"))
 
 
 def get_pg_conn():
-    """
-    Render Postgres obično daje DATABASE_URL.
-    Ponekad je scheme 'postgres://', a psycopg2 očekuje 'postgresql://'.
-    Ovdje to ispravljamo i spajamo se.
-    """
     db_url = os.environ.get("DATABASE_URL", "").strip()
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
-
-    # psycopg2 može direktno preko DSN stringa
     return psycopg2.connect(db_url)
 
 
@@ -38,7 +29,7 @@ def get_sqlite_conn():
     return conn
 
 
-def db_execute(sql, params=None, fetchone=False, fetchall=False):
+def db_execute(sql: str, params=None, fetchone: bool = False, fetchall: bool = False):
     params = params or ()
 
     if is_postgres():
@@ -101,7 +92,6 @@ def init_db():
 
 @app.before_request
 def _ensure_db():
-    # osiguraj da tabela postoji
     init_db()
 
 
@@ -147,38 +137,17 @@ def index():
 def list_reports():
     rows = db_execute("SELECT * FROM reports ORDER BY id DESC", fetchall=True)
 
-    # Sigurno formatiranje datuma za prikaz u listi
+    # Sigurno formatiranje datuma za prikaz u listi (DD.MM.YYYY)
     for r in rows:
         d = r.get("datum")
         if not d:
             r["datum_fmt"] = ""
             continue
 
-        try:
-            r["datum_fmt"] = d.strftime("%d.%m.%Y")  # ako je date/datetime
-        except Exception:
-            s = str(d)  # ako je string "YYYY-MM-DD"
-            if len(s) >= 10 and s[4] == "-" and s[7] == "-":
-                r["datum_fmt"] = f"{s[8:10]}.{s[5:7]}.{s[0:4]}"
-            else:
-                r["datum_fmt"] = s
-
-    return render_template("list.html", reports=rows)
-
-
-    # dodaj formatirani datum koji ne baca grešku
-    for r in rows:
-        d = r.get("datum")
-        if not d:
-            r["datum_fmt"] = ""
-            continue
-
-        # Postgres može vratiti date ili string; oba podržavamo
         try:
             r["datum_fmt"] = d.strftime("%d.%m.%Y")
         except Exception:
             s = str(d)
-            # očekujemo "YYYY-MM-DD"
             if len(s) >= 10 and s[4] == "-" and s[7] == "-":
                 r["datum_fmt"] = f"{s[8:10]}.{s[5:7]}.{s[0:4]}"
             else:
@@ -220,6 +189,5 @@ def delete_report(report_id):
     return redirect(url_for("list_reports"))
 
 
-# Lokalno pokretanje (Render koristi gunicorn iz Procfile)
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
