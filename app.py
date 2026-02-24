@@ -145,22 +145,25 @@ def index():
 
 @app.route("/list")
 def list_reports():
-    rows = db_execute("SELECT * FROM reports ORDER BY id DESC", fetchall=True)    for r in rows:
+    rows = db_execute("SELECT * FROM reports ORDER BY id DESC", fetchall=True)
+
+    # Sigurno formatiranje datuma za prikaz u listi
+    for r in rows:
         d = r.get("datum")
         if not d:
             r["datum_fmt"] = ""
             continue
 
         try:
-            # ako je date/datetime
-            r["datum_fmt"] = d.strftime("%d.%m.%Y")
+            r["datum_fmt"] = d.strftime("%d.%m.%Y")  # ako je date/datetime
         except Exception:
-            # ako je string "YYYY-MM-DD"
-            s = str(d)
+            s = str(d)  # ako je string "YYYY-MM-DD"
             if len(s) >= 10 and s[4] == "-" and s[7] == "-":
                 r["datum_fmt"] = f"{s[8:10]}.{s[5:7]}.{s[0:4]}"
             else:
                 r["datum_fmt"] = s
+
+    return render_template("list.html", reports=rows)
 
 
     # dodaj formatirani datum koji ne baca grešku
