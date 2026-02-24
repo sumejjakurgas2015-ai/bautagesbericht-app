@@ -73,9 +73,7 @@
             <td>{{ r["id"] }}</td>
             <td>{{ r["created_at"] }}</td>
             <td>
-  {% if report.datum %}
-    {{ report.datum.strftime('%d.%m.%Y') if report.datum.__class__.__name__ != 'str' else report.datum }}
-  {% endif %}
+  <td>{{ r["datum_fmt"] }}</td>
 </td>
             <td>{{ r["baustelle"] }}</td>
             <td>{{ r["wetter"] or "-" }}</td>
