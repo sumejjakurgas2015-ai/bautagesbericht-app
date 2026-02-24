@@ -145,16 +145,25 @@ def index():
 
 @app.route("/list")
 def list_reports():
-    if is_postgres():
-        rows = db_execute(
-            "SELECT * FROM reports ORDER BY id DESC",
-            fetchall=True
-        )
-    else:
-        rows = db_execute(
-            "SELECT * FROM reports ORDER BY id DESC",
-            fetchall=True
-        )
+    rows = db_execute("SELECT * FROM reports ORDER BY id DESC", fetchall=True)
+
+    # dodaj formatirani datum koji ne baca grešku
+    for r in rows:
+        d = r.get("datum")
+        if not d:
+            r["datum_fmt"] = ""
+            continue
+
+        # Postgres može vratiti date ili string; oba podržavamo
+        try:
+            r["datum_fmt"] = d.strftime("%d.%m.%Y")
+        except Exception:
+            s = str(d)
+            # očekujemo "YYYY-MM-DD"
+            if len(s) >= 10 and s[4] == "-" and s[7] == "-":
+                r["datum_fmt"] = f"{s[8:10]}.{s[5:7]}.{s[0:4]}"
+            else:
+                r["datum_fmt"] = s
 
     return render_template("list.html", reports=rows)
 
