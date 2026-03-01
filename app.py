@@ -249,9 +249,7 @@ def calc_netto_stunden(von: str, bis: str, pause_stunden: float):
         netto = 0.0
     return round(netto, 2)
 
-@app.route("/health")
-def health():
-    return "OK", 200
+
 
 @app.route("/")
 def home():
