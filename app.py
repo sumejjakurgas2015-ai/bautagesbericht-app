@@ -142,7 +142,67 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for("login"))
+@app.route("/register-company", methods=["GET", "POST"])
+def register_company():
+    # jednostavna zaštita: samo ako znaš ADMIN_MASTER_KEY
+    master_key = os.environ.get("ADMIN_MASTER_KEY", "")
+    key = request.args.get("key", "")
 
+    if not master_key or key != master_key:
+        return "Forbidden", 403
+
+    if request.method == "POST":
+        company_name = (request.form.get("company_name") or "").strip()
+        company_email = (request.form.get("company_email") or "").strip()
+        admin_name = (request.form.get("admin_name") or "").strip()
+        admin_pin = (request.form.get("admin_pin") or "").strip()
+
+        if not company_name or not admin_name or not admin_pin:
+            flash("Bitte alle Pflichtfelder ausfüllen.", "error")
+            return redirect(url_for("register_company", key=key))
+
+        conn = get_db()
+        cur = conn.cursor()
+
+        # 1) kreiraj firmu
+        cur.execute(
+            "INSERT INTO companies (name, contact_email) VALUES (?, ?)",
+            (company_name, company_email if company_email else None)
+        )
+        company_id = cur.lastrowid
+
+        # 2) kreiraj admin usera za tu firmu
+        cur.execute(
+            "INSERT INTO users (name, pin, company_id) VALUES (?, ?, ?)",
+            (admin_name, admin_pin, company_id)
+        )
+
+        conn.commit()
+        conn.close()
+
+        return f"OK. Company created (id={company_id}). Admin login: {admin_name}"
+
+    return """
+    <h2>Register Company</h2>
+    <form method="post">
+      <label>Company Name*</label><br>
+      <input name="company_name" required><br><br>
+
+      <label>Company Email</label><br>
+      <input name="company_email"><br><br>
+
+      <label>Admin Name*</label><br>
+      <input name="admin_name" required><br><br>
+
+      <label>Admin PIN*</label><br>
+      <input name="admin_pin" required><br><br>
+
+      <button type="submit">Create</button>
+    </form>
+    """
+@app.route("/routes")
+def routes():
+    return "<br>".join(sorted([str(r) for r in app.url_map.iter_rules()]))
 
 # -------------------------------------------------
 # Home / Index
