@@ -249,6 +249,14 @@ def calc_netto_stunden(von: str, bis: str, pause_stunden: float):
         netto = 0.0
     return round(netto, 2)
 
+@app.route("/health")
+def health():
+    return "OK", 200
+
+@app.route("/")
+def home():
+    return redirect(url_for("login"))  # ako imaš /login
+    # ako nemaš /login, stavi: return redirect(url_for("index"))
 
 # -----------------------------
 # Routes: LOGIN / LOGOUT
