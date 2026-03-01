@@ -136,6 +136,21 @@ def login():
             flash("Falscher Name oder PIN.", "error")
 
     return render_template("login.html")
+@app.route("/list")
+def list_reports():
+    if not is_logged_in():
+        return redirect(url_for("login"))
+
+    company_id = session.get("company_id", COMPANY_ID)
+
+    conn = get_db()
+    reports = conn.execute(
+        "SELECT * FROM reports WHERE company_id = ? ORDER BY id DESC",
+        (company_id,)
+    ).fetchall()
+    conn.close()
+
+    return render_template("list.html", reports=reports)
 
 
 @app.route("/logout")
