@@ -1,62 +1,193 @@
-﻿{% extends "base.html" %}
+﻿
+{% extends "base.html" %}
 {% block content %}
 
-<div class="top">
-  <h2>Neuer Bautagesbericht</h2>
-  <a href="/list"><button class="btn btn-link" type="button">Liste ansehen</button></a>
+<style>
+.section {
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 20px;
+  background: rgba(255,255,255,0.02);
+}
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 15px;
+}
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+.grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 15px;
+}
+label {
+  font-weight: 600;
+  display:block;
+  margin-bottom:6px;
+}
+input, textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.05);
+  color: white;
+}
+textarea {
+  min-height: 100px;
+}
+button {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: none;
+  background: #3b82f6;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+@media (max-width: 900px){
+  .grid-2, .grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+
+<h2>Neuer Bautagesbericht</h2>
+
+<form method="POST">
+
+<!-- GRUNDDATEN -->
+<div class="section">
+  <div class="section-title">Grunddaten</div>
+  <div class="grid-2">
+    <div>
+      <label>Datum</label>
+      <input name="datum" value="{{ heute }}" required>
+    </div>
+    <div>
+      <label>Wetter</label>
+      <input name="wetter" placeholder="z.B. sonnig, kalt, Regen">
+    </div>
+  </div>
 </div>
 
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for category, msg in messages %}
-      <div class="flash {{ category }}">{{ msg }}</div>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
-
-<div class="card">
-  <form method="post">
-    <div class="row">
-      <div>
-        <label for="datum">Datum</label>
-        <input id="datum" type="date" name="datum" required>
-      </div>
-
-      <div>
-        <label for="wetter">Wetter</label>
-        <input id="wetter" type="text" name="wetter" placeholder="z.B. sonnig, kalt, Regen">
-      </div>
+<!-- ARBEITSZEIT -->
+<div class="section">
+  <div class="section-title">Arbeitszeit</div>
+  <div class="grid-3">
+    <div>
+      <label>Von</label>
+      <input type="time" name="arbeitszeit_von" value="07:00">
     </div>
-
-    <div style="margin-top:12px;">
-      <label for="baustelle">Baustelle (Pflichtfeld)</label>
-      <input id="baustelle" type="text" name="baustelle" placeholder="z.B. Mannheim, Musterstraße 12" required>
+    <div>
+      <label>Bis</label>
+      <input type="time" name="arbeitszeit_bis" value="16:00">
     </div>
-
-    <div style="margin-top:12px;">
-      <label for="team">Team / Personal</label>
-      <input id="team" type="text" name="team" placeholder="z.B. 4 Mitarbeiter + 1 Baggerfahrer">
+    <div>
+      <label>Pause (Std.)</label>
+      <input type="number" name="pause_stunden" step="0.25" min="0" placeholder="0.5">
     </div>
-
-    <div style="margin-top:12px;">
-      <label for="arbeit">Arbeiten</label>
-      <textarea id="arbeit" name="arbeit" placeholder="Welche Arbeiten wurden heute durchgeführt..."></textarea>
-    </div>
-
-    <div style="margin-top:12px;">
-      <label for="material">Material / Lieferung</label>
-      <textarea id="material" name="material" placeholder="Material, Lieferung, Lager..."></textarea>
-    </div>
-
-    <div style="margin-top:12px;">
-      <label for="bemerkung">Bemerkung</label>
-      <textarea id="bemerkung" name="bemerkung" placeholder="z.B. Kabelfehler, Wartezeit, Absperrung, Montageverzögerung..."></textarea>
-    </div>
-
-    <div style="margin-top:14px;">
-      <button class="btn btn-primary" type="submit">Speichern</button>
-    </div>
-  </form>
+  </div>
 </div>
+
+<!-- BAUSTELLE -->
+<div class="section">
+  <div class="section-title">Baustelle & Team</div>
+  <div>
+    <label>Baustelle (Pflichtfeld)</label>
+    <input name="baustelle" required>
+  </div>
+  <div style="margin-top:10px;">
+    <label>Team / Personal</label>
+    <input name="team">
+  </div>
+</div>
+
+<!-- PERSONAL -->
+<div class="section">
+  <div class="section-title">Personal / Rollen</div>
+  <div class="grid-2">
+
+    <div>
+      <label>Polier</label>
+      <input name="polier_name">
+    </div>
+    <div>
+      <label>Polier (Stunden)</label>
+      <input type="number" name="polier_stunden" step="0.25" min="0">
+    </div>
+
+    <div>
+      <label>Vorarbeiter</label>
+      <input name="vorarbeiter_name">
+    </div>
+    <div>
+      <label>Vorarbeiter (Stunden)</label>
+      <input type="number" name="vorarbeiter_stunden" step="0.25" min="0">
+    </div>
+
+    <div>
+      <label>Facharbeiter</label>
+      <input name="facharbeiter_name">
+    </div>
+    <div>
+      <label>Facharbeiter (Stunden)</label>
+      <input type="number" name="facharbeiter_stunden" step="0.25" min="0">
+    </div>
+
+    <div>
+      <label>Elektriker</label>
+      <input name="elektriker_name">
+    </div>
+    <div>
+      <label>Elektriker (Stunden)</label>
+      <input type="number" name="elektriker_stunden" step="0.25" min="0">
+    </div>
+
+    <div>
+      <label>Helfer</label>
+      <input name="helfer_name">
+    </div>
+    <div>
+      <label>Helfer (Stunden)</label>
+      <input type="number" name="helfer_stunden" step="0.25" min="0">
+    </div>
+    <div>
+      <label>LKW Fahrer</label>
+      <input name="lkw_fahrer_name">
+    </div>
+    <div>
+      <label>LKW Fahrer (Stunden)</label>
+      <input type="number" name="lkw_fahrer_stunden" step="0.25" min="0">
+    </div>
+
+  </div>
+</div>
+
+<!-- TÄTIGKEITEN -->
+<div class="section">
+  <div class="section-title">Tätigkeiten</div>
+  <div>
+    <label>Arbeiten</label>
+    <textarea name="arbeit"></textarea>
+  </div>
+  <div style="margin-top:10px;">
+    <label>Material</label>
+    <textarea name="material"></textarea>
+  </div>
+  <div style="margin-top:10px;">
+    <label>Bemerkung</label>
+    <textarea name="bemerkung"></textarea>
+  </div>
+</div>
+
+<button type="submit">Speichern</button>
+
+</form>
 
 {% endblock %}

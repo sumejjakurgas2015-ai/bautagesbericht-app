@@ -1,26 +1,48 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="top">
-  <h2>Bericht anzeigen</h2>
-  <a href="/list"><button class="btn btn-link" type="button">Zur Liste</button></a>
+<h2 style="margin:14px 0 6px 0;">Bericht – Details</h2>
+
+<a href="{{ url_for('list_reports') }}">← Zur Liste</a>
+&nbsp; | &nbsp;
+<a href="{{ url_for('edit_report', report_id=report['id']) }}">Bearbeiten</a>
+
+<div class="card" style="margin-top:12px;">
+  <div class="section-title">Grunddaten</div>
+  <p><b>Datum:</b> {{ report["datum"] }}</p>
+  <p><b>Wetter:</b> {{ report["wetter"] or "-" }}</p>
 </div>
 
 <div class="card">
-  <p><b>ID:</b> {{ report["id"] }}</p>
-  <p><b>Erstellt:</b> {{ report["created_at"] }}</p>
-  <p><b>Datum:</b> {{ report["datum"] or "-" }}</p>
+  <div class="section-title">Arbeitszeit</div>
+  <p><b>Von:</b> {{ report["arbeitszeit_von"] or "-" }} |
+     <b>Bis:</b> {{ report["arbeitszeit_bis"] or "-" }} |
+     <b>Pause:</b> {{ report["pause_stunden"] or 0 }} h</p>
+  <p><b>Netto:</b> {{ report["netto_stunden"] or "-" }} h</p>
+</div>
+
+<div class="card">
+  <div class="section-title">Baustelle & Team</div>
   <p><b>Baustelle:</b> {{ report["baustelle"] }}</p>
-  <p><b>Wetter:</b> {{ report["wetter"] or "-" }}</p>
   <p><b>Team:</b> {{ report["team"] or "-" }}</p>
+</div>
 
-  <p><b>Arbeiten:</b><br>{{ (report["arbeit"] or "-")|replace('\n','<br>')|safe }}</p>
-  <p><b>Material / Lieferung:</b><br>{{ (report["material"] or "-")|replace('\n','<br>')|safe }}</p>
-  <p><b>Bemerkung:</b><br>{{ (report["bemerkung"] or "-")|replace('\n','<br>')|safe }}</p>
+<div class="card">
+  <div class="section-title">Personal / Rollen</div>
+  <p><b>Polier:</b> {{ report["polier_name"] or "-" }} ({{ report["polier_stunden"] or "-" }} h)</p>
+  <p><b>Vorarbeiter:</b> {{ report["vorarbeiter_name"] or "-" }} ({{ report["vorarbeiter_stunden"] or "-" }} h)</p>
+  <p><b>Facharbeiter:</b> {{ report["facharbeiter_name"] or "-" }} ({{ report["facharbeiter_stunden"] or "-" }} h)</p>
+  <p><b>Elektriker:</b> {{ report["elektriker_name"] or "-" }} ({{ report["elektriker_stunden"] or "-" }} h)</p>
+  <p><b>Helfer:</b> {{ report["helfer_name"] or "-" }} ({{ report["helfer_stunden"] or "-" }} h)</p>
+</div><p><b>LKW Fahrer:</b> {{ report["lkw_fahrer_name"] or "-" }}
+   ({{ report["lkw_fahrer_stunden"] or 0 }} h)
+</p>
 
-  <form method="post" action="{{ url_for('delete_report', report_id=report['id']) }}" onsubmit="return confirm('Bericht wirklich löschen?');">
-    <button class="btn btn-danger" type="submit">Löschen</button>
-  </form>
+<div class="card">
+  <div class="section-title">Tätigkeiten</div>
+  <p><b>Arbeiten:</b><br>{{ (report["arbeit"] or "-") | replace("\n","<br>") | safe }}</p>
+  <p><b>Material:</b><br>{{ (report["material"] or "-") | replace("\n","<br>") | safe }}</p>
+  <p><b>Bemerkung:</b><br>{{ (report["bemerkung"] or "-") | replace("\n","<br>") | safe }}</p>
 </div>
 
 {% endblock %}

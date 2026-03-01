@@ -2,25 +2,118 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>{% block title %}Bautagesbericht{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bautagesbericht</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <style>
-    body { font-family: Arial, sans-serif; margin: 24px; max-width: 900px; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    label { font-weight: 600; display: block; margin-bottom: 6px; }
-    input, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; }
-    textarea { min-height: 110px; }
-    .card { border: 1px solid #e6e6e6; border-radius: 12px; padding: 16px; }
-    .btn { padding: 10px 14px; border-radius: 10px; border: 0; cursor: pointer; }
-    .btn-primary { background: #111; color: #fff; }
-    .btn-link { background: transparent; text-decoration: underline; }
-    .top { display:flex; justify-content: space-between; align-items:center; margin-bottom: 14px; }
-    .flash { padding: 10px; border-radius: 10px; margin: 10px 0; }
-    .success { background: #e7f8ee; border: 1px solid #bde7cb; }
-    .error { background: #fdecec; border: 1px solid #f5b9b9; }
+    :root{
+      --bg:#0b1220;
+      --card:#0f1b33;
+      --muted:#9fb0d0;
+      --text:#e9efff;
+      --accent:#4f7cff;
+      --danger:#ef4444;
+      --border: rgba(255,255,255,.08);
+      --shadow: 0 12px 30px rgba(0,0,0,.35);
+      --radius: 18px;
+    }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:
+        radial-gradient(1200px 600px at 10% 0%, rgba(22,165,96,.18), transparent 60%),
+        radial-gradient(900px 500px at 90% 10%, rgba(79,124,255,.16), transparent 55%),
+        var(--bg);
+      color:var(--text);
+    }
+    .wrap{ max-width: 960px; margin: 22px auto; padding: 0 16px; }
+    .topbar{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px; padding:14px 16px;
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(15,27,51,.65);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+    }
+    .brand{ font-weight:900; letter-spacing:.2px; display:flex; align-items:center; gap:10px; }
+    a{ color: var(--accent); text-decoration:none; }
+    h2{ margin: 14px 0 0 0; }
+
+    .flash{
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.06);
+    }
+    .flash.success{ border-color: rgba(34,197,94,.35); }
+    .flash.error{ border-color: rgba(239,68,68,.35); }
+
+    .content{ margin-top: 12px; }
+
+    .nav-links{
+      display:flex;
+      align-items:center;
+      gap:14px;
+      font-size:14px;
+    }
+    .btn-logout{
+      background: var(--danger);
+      padding:6px 10px;
+      border-radius:10px;
+      font-weight:600;
+      color:white;
+    }
   </style>
 </head>
 <body>
-  {% block content %}{% endblock %}
+  <div class="wrap">
+    <div class="topbar">
+
+      <!-- Logo + naziv -->
+      <div class="brand">
+        <img src="{{ url_for('static', filename='logo.png') }}" 
+             alt="Logo"
+             style="height:34px; width:auto; border-radius:8px;">
+        <span>Bautagesbericht</span>
+      </div>
+
+      <!-- DESNA STRANA -->
+      <div class="nav-links">
+
+        {% if me %}
+          <span style="opacity:.8;">
+            👷 {{ me["name"] }} ({{ me["role"] }})
+          </span>
+
+          <a href="{{ url_for('list_reports') }}">Liste</a>
+
+          {% if me["role"] == "admin" %}
+            <a href="{{ url_for('admin_users') }}">Admin</a>
+          {% endif %}
+
+          <a class="btn-logout" href="{{ url_for('logout') }}">Logout</a>
+
+        {% else %}
+          <a href="{{ url_for('login') }}">Login</a>
+        {% endif %}
+
+      </div>
+
+    </div>
+
+    <div class="content">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, msg in messages %}
+            <div class="flash {{ category }}">{{ msg }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </div>
+  </div>
 </body>
 </html>

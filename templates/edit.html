@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 style="margin:14px 0 6px 0;">Bericht bearbeiten</h2>
+<a href="{{ url_for('report_detail', report_id=report['id']) }}">Zurück</a>
+
+<form method="POST" action="{{ url_for('edit_report', report_id=report['id']) }}">
+
+  <!-- Grunddaten -->
+  <div class="card" style="margin-top:12px;">
+    <div class="section-title">Grunddaten</div>
+    <div class="grid">
+      <div>
+        <label for="datum">Datum</label>
+        <input id="datum" name="datum" type="text" value="{{ report['datum'] or '' }}" required />
+      </div>
+      <div>
+        <label for="wetter">Wetter</label>
+        <input id="wetter" name="wetter" type="text" value="{{ report['wetter'] or '' }}" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Arbeitszeit -->
+  <div class="card">
+    <div class="section-title">Arbeitszeit</div>
+    <div class="grid3">
+      <div>
+        <label for="arbeitszeit_von">Von</label>
+        <input id="arbeitszeit_von" name="arbeitszeit_von" type="time" value="{{ report['arbeitszeit_von'] or '07:00' }}" />
+      </div>
+      <div>
+        <label for="arbeitszeit_bis">Bis</label>
+        <input id="arbeitszeit_bis" name="arbeitszeit_bis" type="time" value="{{ report['arbeitszeit_bis'] or '16:00' }}" />
+      </div>
+      <div>
+        <label for="pause_stunden">Pause (Std.)</label>
+        <input id="pause_stunden" name="pause_stunden" type="number" step="0.25" value="{{ report['pause_stunden'] or '' }}" />
+      </div>
+    </div>
+
+    <div style="margin-top:12px;">
+      <label for="netto_stunden_view">Netto Arbeitszeit (Std.)</label>
+      <input id="netto_stunden_view" type="text" readonly value="{{ report['netto_stunden'] or '' }}" />
+      <small>Berechnung: (Bis - Von) - Pause</small>
+    </div>
+  </div>
+
+  <!-- Baustelle & Team -->
+  <div class="card">
+    <div class="section-title">Baustelle & Team</div>
+    <div>
+      <label for="baustelle">Baustelle (Pflichtfeld)</label>
+      <input id="baustelle" name="baustelle" type="text" value="{{ report['baustelle'] or '' }}" required />
+    </div>
+    <div style="margin-top:12px;">
+      <label for="team">Team / Personal</label>
+      <input id="team" name="team" type="text" value="{{ report['team'] or '' }}" />
+    </div>
+  </div>
+
+  <!-- Rollen -->
+  <div class="card">
+    <div class="section-title">Personal / Rollen</div>
+    <div class="grid">
+      <div><label>Polier (Name)</label><input name="polier_name" type="text" value="{{ report['polier_name'] or '' }}"></div>
+      <div><label>Polier (Stunden)</label><input name="polier_stunden" type="number" step="0.25" value="{{ report['polier_stunden'] or '' }}"></div>
+
+      <div><label>Vorarbeiter (Name)</label><input name="vorarbeiter_name" type="text" value="{{ report['vorarbeiter_name'] or '' }}"></div>
+      <div><label>Vorarbeiter (Stunden)</label><input name="vorarbeiter_stunden" type="number" step="0.25" value="{{ report['vorarbeiter_stunden'] or '' }}"></div>
+
+      <div><label>Facharbeiter (Name)</label><input name="facharbeiter_name" type="text" value="{{ report['facharbeiter_name'] or '' }}"></div>
+      <div><label>Facharbeiter (Stunden)</label><input name="facharbeiter_stunden" type="number" step="0.25" value="{{ report['facharbeiter_stunden'] or '' }}"></div>
+
+      <div><label>Elektriker (Name)</label><input name="elektriker_name" type="text" value="{{ report['elektriker_name'] or '' }}"></div>
+      <div><label>Elektriker (Stunden)</label><input name="elektriker_stunden" type="number" step="0.25" value="{{ report['elektriker_stunden'] or '' }}"></div>
+
+      <div><label>Helfer (Name)</label><input name="helfer_name" type="text" value="{{ report['helfer_name'] or '' }}"></div>
+      <div><label>Helfer (Stunden)</label><input name="helfer_stunden" type="number" step="0.25" value="{{ report['helfer_stunden'] or '' }}"></div>
+    </div>
+  </div>
+
+  <!-- Tätigkeiten -->
+  <div class="card">
+    <div class="section-title">Tätigkeiten</div>
+    <div>
+      <label for="arbeit">Arbeiten</label>
+      <textarea id="arbeit" name="arbeit">{{ report['arbeit'] or '' }}</textarea>
+    </div>
+    <div style="margin-top:12px;">
+      <label for="material">Material</label>
+      <textarea id="material" name="material">{{ report['material'] or '' }}</textarea>
+    </div>
+    <div style="margin-top:12px;">
+      <label for="bemerkung">Bemerkung</label>
+      <textarea id="bemerkung" name="bemerkung">{{ report['bemerkung'] or '' }}</textarea>
+    </div>
+  </div>
+
+  <div style="margin-top:14px;">
+    <button class="btn btn-primary" type="submit">Änderungen speichern</button>
+  </div>
+
+</form>
+
+<script>
+  function parseTimeToMinutes(t){
+    if(!t || t.indexOf(":") === -1) return null;
+    const [h,m] = t.split(":").map(Number);
+    if(Number.isNaN(h) || Number.isNaN(m)) return null;
+    return h*60 + m;
+  }
+  function toFloat(v){
+    if(!v) return 0;
+    v = (""+v).replace(",", ".");
+    const n = parseFloat(v);
+    return Number.isNaN(n) ? 0 : n;
+  }
+  function recalcNetto(){
+    const von = document.getElementById("arbeitszeit_von")?.value;
+    const bis = document.getElementById("arbeitszeit_bis")?.value;
+    const pause = toFloat(document.getElementById("pause_stunden")?.value);
+
+    const mv = parseTimeToMinutes(von);
+    const mb = parseTimeToMinutes(bis);
+
+    const out = document.getElementById("netto_stunden_view");
+    if(!out) return;
+
+    if(mv === null || mb === null){
+      out.value = "";
+      return;
+    }
+
+    let diff = mb - mv;
+    if(diff < 0) diff += 24*60;
+
+    let netto = (diff/60) - pause;
+    if(netto < 0) netto = 0;
+
+    out.value = netto.toFixed(2);
+  }
+
+  ["arbeitszeit_von","arbeitszeit_bis","pause_stunden"].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.addEventListener("input", recalcNetto);
+  });
+  recalcNetto();
+</script>
+
+{% endblock %}
+<style>
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .card { border: 1px solid #e6e6e6; border-radius: 12px; padding: 16px; margin-top: 12px; }
+  .section-title { margin: 0 0 10px 0; font-weight: 900; }
+  label { font-weight: 700; display:block; margin-bottom:6px; }
+  input, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 10px; font: inherit; }
+  textarea { min-height: 120px; resize: vertical; }
+  .btn { padding: 10px 14px; border-radius: 10px; border: 0; cursor: pointer; font-weight: 700; }
+  .btn-primary { background:#3b82f6; color:#fff; }
+</style>
