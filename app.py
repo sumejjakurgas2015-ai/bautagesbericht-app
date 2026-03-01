@@ -48,7 +48,12 @@ def init_db():
             created_at TIMESTAMP DEFAULT NOW()
         );
     """)
-
+    # RESET (samo kad treba)
+    if os.environ.get("RESET_DB") == "1":
+        cur.execute("DROP TABLE IF EXISTS reports;")
+        cur.execute("DROP TABLE IF EXISTS users;")
+        cur.execute("DROP TABLE IF EXISTS companies;")
+        conn.commit()
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
