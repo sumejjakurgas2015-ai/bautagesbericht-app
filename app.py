@@ -591,7 +591,7 @@ def delete_report(report_id):
 def health():
     return "OK", 200
 
-@app.route("/")
+@app.route("go")
 def home():
     # ako imaš login rutu, prebaci na nju:
     return redirect(url_for("login"))  # ako nema login, reci mi pa stavimo na index
