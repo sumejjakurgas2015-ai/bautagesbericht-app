@@ -1,3 +1,4 @@
+
 import os
 import sqlite3
 from datetime import datetime
@@ -18,9 +19,13 @@ app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
 
 DATABASE = os.path.join(BASE_DIR, "bautagesbericht.db")
 
+# For "multi-company" (Korak 1)
+# Later ćemo ovo zamijeniti pravim login/company sistemom po firmi.
+COMPANY_ID = int(os.environ.get("COMPANY_ID", "1"))
+
 
 # -------------------------------------------------
-# Database
+# Database helpers
 # -------------------------------------------------
 def get_db():
     conn = sqlite3.connect(DATABASE)
@@ -29,43 +34,72 @@ def get_db():
 
 
 def init_db():
+    """Create tables + seed minimal data. Run once at startup."""
     conn = get_db()
+    cur = conn.cursor()
 
-    # ----------------------------
-    # USERS tabela (reset jednom)
-    # ----------------------------
-    conn.execute("DROP TABLE IF EXISTS Users;")   # stara tabela
-    conn.execute("DROP TABLE IF EXISTS users;")   # ako postoji neka druga
-
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
+    # Companies
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS companies (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE NOT NULL,
-            pin TEXT NOT NULL
+            name TEXT NOT NULL,
+            contact_email TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
         )
     """)
 
-    # default user
-    conn.execute(
-        "INSERT OR IGNORE INTO users (name, pin) VALUES (?, ?)",
-        ("Suad", "1234")
+    # Users (each user belongs to a company)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL,
+            pin TEXT NOT NULL,
+            company_id INTEGER NOT NULL,
+            created_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (company_id) REFERENCES companies(id)
+        )
+    """)
+
+    # Reports (each report belongs to a company)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            datum TEXT,
+            baustelle TEXT,
+            arbeit TEXT,
+            material TEXT,
+            bemerkung TEXT,
+            created_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (company_id) REFERENCES companies(id)
+        )
+    """)
+
+    # Seed: default company (id=1 typically)
+    cur.execute(
+        "INSERT OR IGNORE INTO companies (id, name, contact_email) VALUES (?, ?, ?)",
+        (1, "Demo Firma", "demo@firma.de")
+    )
+
+    # Seed: default user for demo (belongs to company 1)
+    # PROMIJENI PIN kasnije!
+    cur.execute(
+        "INSERT OR IGNORE INTO users (name, pin, company_id) VALUES (?, ?, ?)",
+        ("Suad", "1234", 1)
     )
 
     conn.commit()
-
-    # (ostali CREATE TABLE za reports ostaju kako već imaš)
     conn.close()
 
 
-@app.before_request
-def before_request():
-    init_db()
+# Run DB init once when app starts (not on every request!)
+init_db()
 
 
 # -------------------------------------------------
-# Helper
+# Auth helpers
 # -------------------------------------------------
-def login_required():
+def is_logged_in():
     return "user_id" in session
 
 
@@ -78,24 +112,25 @@ def health():
 
 
 # -------------------------------------------------
-# Login
+# Login / Logout
 # -------------------------------------------------
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        name = request.form.get("name")
-        pin = request.form.get("pin")
+        name = (request.form.get("name") or "").strip()
+        pin = (request.form.get("pin") or "").strip()
 
         conn = get_db()
         user = conn.execute(
-            "SELECT * FROM users WHERE name=? AND pin=?",
+            "SELECT * FROM users WHERE name = ? AND pin = ?",
             (name, pin)
         ).fetchone()
         conn.close()
 
         if user:
-            session["user_id"] = user["id"]
+            session["user_id"] = int(user["id"])
             session["name"] = user["name"]
+            session["company_id"] = int(user["company_id"])
             return redirect(url_for("index"))
         else:
             flash("Falscher Name oder PIN.", "error")
@@ -103,48 +138,6 @@ def login():
     return render_template("login.html")
 
 
-# -------------------------------------------------
-# Initialize database
-# -------------------------------------------------
-def init_db():
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    # Companies table
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS companies (
-        id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        contact_email TEXT,
-        created_at TIMESTAMP DEFAULT NOW()
-    );
-    """)
-
-    # Reports table
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS reports (
-        ...
-    );
-    """)
-
-    conn.commit()
-    cur.close()
-    conn.close()
-
-
-    if user:
-            session["user_id"] = user["id"]
-            session["name"] = user["name"]
-            return redirect(url_for("index"))
-    else:
-            flash("Falscher Name oder PIN.", "error")
-
-    return render_template("login.html")
-
-
-# -------------------------------------------------
-# Logout
-# -------------------------------------------------
 @app.route("/logout")
 def logout():
     session.clear()
@@ -156,59 +149,52 @@ def logout():
 # -------------------------------------------------
 @app.route("/", methods=["GET", "POST"])
 def index():
-    if not login_required():
+    if not is_logged_in():
         return redirect(url_for("login"))
+
+    company_id = session.get("company_id", COMPANY_ID)
 
     if request.method == "POST":
         datum = request.form.get("datum")
         baustelle = request.form.get("baustelle")
         arbeit = request.form.get("arbeit")
+        material = request.form.get("material")
+        bemerkung = request.form.get("bemerkung")
 
         conn = get_db()
         conn.execute(
-            "INSERT INTO reports (datum, baustelle, arbeit, created_at) VALUES (?, ?, ?, ?)",
-            (datum, baustelle, arbeit, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            """
+            INSERT INTO reports (company_id, datum, baustelle, arbeit, material, bemerkung, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                company_id,
+                datum,
+                baustelle,
+                arbeit,
+                material,
+                bemerkung,
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            ),
         )
         conn.commit()
         conn.close()
 
         flash("Bericht gespeichert.", "success")
         return redirect(url_for("index"))
-def init_db():
+
     conn = get_db()
-    
-
-    # ----------------------------
-    # USERS tabela (reset jednom)
-    # ----------------------------
-    conn.execute("DROP TABLE IF EXISTS Users;")   # stara tabela
-    conn.execute("DROP TABLE IF EXISTS users;")   # ako postoji neka druga
-
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE NOT NULL,
-            pin TEXT NOT NULL
-        )
-    """)
-
-    # default user
-    conn.execute(
-        "INSERT OR IGNORE INTO users (name, pin) VALUES (?, ?)",
-        ("Suad", "1234")
-    )
-
-    conn.commit()
-
-    # (ostali CREATE TABLE za reports ostaju kako već imaš)
-    conn.close()
+    reports = conn.execute(
+        "SELECT * FROM reports WHERE company_id = ? ORDER BY id DESC",
+        (company_id,)
+    ).fetchall()
     conn.close()
 
     return render_template("index.html", reports=reports)
 
 
 # -------------------------------------------------
-# Add user (admin only via env)
+# Create admin / demo user via ENV (optional)
 # -------------------------------------------------
 @app.route("/create-admin")
 def create_admin():
@@ -219,26 +205,14 @@ def create_admin():
         return "ADMIN_NAME and ADMIN_PIN not set", 400
 
     conn = get_db()
-        # RESET USERS tabela (samo jednom)
-    
-    try:
-        conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE,
-            pin TEXT
-        )
-    """)
-        conn.commit()
-        conn.execute("""
-        INSERT OR IGNORE INTO users (name, pin)
-        VALUES (?, ?)
-    """, ("Suad", "1234"))
-    except:
-        pass
+    conn.execute(
+        "INSERT OR IGNORE INTO users (name, pin, company_id) VALUES (?, ?, ?)",
+        (admin_name, admin_pin, 1)
+    )
+    conn.commit()
     conn.close()
 
-    return "Admin created or already exists."
+    return "Admin created or already exists.", 200
 
 
 # -------------------------------------------------
