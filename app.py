@@ -174,11 +174,9 @@ def index():
 
         flash("Bericht gespeichert.", "success")
         return redirect(url_for("index"))
-
+def init_db():
     conn = get_db()
-    reports = conn.execute("SELECT * FROM reports ORDER BY id DESC").fetchall()
-    def init_db():
-    conn = get_db()
+    
 
     # ----------------------------
     # USERS tabela (reset jednom)
