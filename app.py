@@ -136,7 +136,7 @@ def init_db():
             session["user_id"] = user["id"]
             session["name"] = user["name"]
             return redirect(url_for("index"))
-        else:
+    else:
             flash("Falscher Name oder PIN.", "error")
 
     return render_template("login.html")
