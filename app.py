@@ -1,6 +1,7 @@
-
+import psycopg2
+from psycopg2.extras import RealDictCursor
 import os
-import sqlite3
+
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 
@@ -26,69 +27,66 @@ COMPANY_ID = int(os.environ.get("COMPANY_ID", "1"))
 
 # -------------------------------------------------
 # Database helpers
-# -------------------------------------------------
+# ------------------------------------------------
 def get_db():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    return conn
+    db_url = os.environ.get("DATABASE_URL")
+    if not db_url:
+        raise RuntimeError("DATABASE_URL is not set")
+
+    return psycopg2.connect(db_url, cursor_factory=RealDictCursor)
 
 
 def init_db():
-    """Create tables + seed minimal data. Run once at startup."""
     conn = get_db()
     cur = conn.cursor()
 
-    # Companies
     cur.execute("""
         CREATE TABLE IF NOT EXISTS companies (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
             contact_email TEXT,
-            created_at TEXT DEFAULT (datetime('now'))
-        )
+            created_at TIMESTAMP DEFAULT NOW()
+        );
     """)
 
-    # Users (each user belongs to a company)
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             name TEXT UNIQUE NOT NULL,
             pin TEXT NOT NULL,
-            company_id INTEGER NOT NULL,
-            created_at TEXT DEFAULT (datetime('now')),
-            FOREIGN KEY (company_id) REFERENCES companies(id)
-        )
+            company_id INTEGER NOT NULL REFERENCES companies(id),
+            created_at TIMESTAMP DEFAULT NOW()
+        );
     """)
 
-    # Reports (each report belongs to a company)
     cur.execute("""
         CREATE TABLE IF NOT EXISTS reports (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            company_id INTEGER NOT NULL,
+            id SERIAL PRIMARY KEY,
+            company_id INTEGER NOT NULL REFERENCES companies(id),
             datum TEXT,
             baustelle TEXT,
             arbeit TEXT,
             material TEXT,
             bemerkung TEXT,
-            created_at TEXT DEFAULT (datetime('now')),
-            FOREIGN KEY (company_id) REFERENCES companies(id)
-        )
+            created_at TIMESTAMP DEFAULT NOW()
+        );
     """)
 
-    # Seed: default company (id=1 typically)
-    cur.execute(
-        "INSERT OR IGNORE INTO companies (id, name, contact_email) VALUES (?, ?, ?)",
-        (1, "Demo Firma", "demo@firma.de")
-    )
+    # Seed default company & user
+    cur.execute("""
+        INSERT INTO companies (id, name, contact_email)
+        VALUES (1, 'Demo Firma', 'demo@firma.de')
+        ON CONFLICT (id) DO NOTHING;
+    """)
 
-    # Seed: default user for demo (belongs to company 1)
-    # PROMIJENI PIN kasnije!
-    cur.execute(
-        "INSERT OR IGNORE INTO users (name, pin, company_id) VALUES (?, ?, ?)",
-        ("Suad", "1234", 1)
-    )
+    cur.execute("""
+        INSERT INTO users (name, pin, company_id)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (name) DO NOTHING;
+    """, ("Suad", "1234", 1))
 
     conn.commit()
+    cur.close()
     conn.close()
 
 
@@ -178,21 +176,12 @@ def register_company():
 
         conn = get_db()
         cur = conn.cursor()
-
-        # 1) kreiraj firmu
         cur.execute(
-            "INSERT INTO companies (name, contact_email) VALUES (?, ?)",
-            (company_name, company_email if company_email else None)
-        )
-        company_id = cur.lastrowid
-
-        # 2) kreiraj admin usera za tu firmu
-        cur.execute(
-            "INSERT INTO users (name, pin, company_id) VALUES (?, ?, ?)",
-            (admin_name, admin_pin, company_id)
-        )
-
-        conn.commit()
+            "SELECT * FROM reports WHERE company_id=%s ORDER BY id DESC",
+            (company_id,)
+)
+        reports = cur.fetchall()
+        cur.close()
         conn.close()
 
         return f"OK. Company created (id={company_id}). Admin login: {admin_name}"
@@ -237,34 +226,27 @@ def index():
         bemerkung = request.form.get("bemerkung")
 
         conn = get_db()
-        conn.execute(
-            """
-            INSERT INTO reports (company_id, datum, baustelle, arbeit, material, bemerkung, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                company_id,
-                datum,
-                baustelle,
-                arbeit,
-                material,
-                bemerkung,
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            ),
-        )
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO reports (company_id, datum, baustelle, arbeit, material, bemerkung)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (company_id, datum, baustelle, arbeit, material, bemerkung))
         conn.commit()
+        cur.close()
         conn.close()
 
         flash("Bericht gespeichert.", "success")
         return redirect(url_for("index"))
 
     conn = get_db()
-    reports = conn.execute(
-        "SELECT * FROM reports WHERE company_id = ? ORDER BY id DESC",
-        (company_id,)
-    ).fetchall()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT * FROM users WHERE name=%s AND pin=%s",
+        (os.name, pin)
+)
+    user = cur.fetchone()
+    cur.close()
     conn.close()
-
     return render_template("index.html", reports=reports)
 
 
