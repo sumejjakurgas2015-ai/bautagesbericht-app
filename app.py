@@ -17,7 +17,6 @@ app = Flask(
 )
 
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
-
 DEFAULT_COMPANY_ID = int(os.environ.get("COMPANY_ID", "1"))
 
 
@@ -31,37 +30,23 @@ def get_db():
     return psycopg2.connect(db_url, cursor_factory=RealDictCursor)
 
 
+def users_has_pin(cur) -> bool:
+    cur.execute(
+        """
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='users' AND column_name='pin'
+        """
+    )
+    return cur.fetchone() is not None
+
+
 def init_db():
     conn = get_db()
     cur = conn.cursor()
 
     # -------------------------------------------------
-    # 0) SELF-HEAL: if old users table exists without 'pin'
-    #    -> drop users+reports so app never crashes again
-    # -------------------------------------------------
-    cur.execute("""
-        SELECT 1
-        FROM information_schema.tables
-        WHERE table_schema='public' AND table_name='users'
-    """)
-    users_exists = cur.fetchone() is not None
-
-    if users_exists:
-        cur.execute("""
-            SELECT 1
-            FROM information_schema.columns
-            WHERE table_schema='public' AND table_name='users' AND column_name='pin'
-        """)
-        pin_exists = cur.fetchone() is not None
-
-        if not pin_exists:
-            # drop dependent first
-            cur.execute("DROP TABLE IF EXISTS reports CASCADE;")
-            cur.execute("DROP TABLE IF EXISTS users CASCADE;")
-            conn.commit()
-
-    # -------------------------------------------------
-    # 1) Optional full reset
+    # 1) Optional full reset (ONLY when RESET_DB == "1")
     # -------------------------------------------------
     if os.environ.get("RESET_DB") == "1":
         cur.execute("DROP TABLE IF EXISTS reports CASCADE;")
@@ -70,7 +55,7 @@ def init_db():
         conn.commit()
 
     # -------------------------------------------------
-    # 2) Create tables
+    # 2) Ensure companies exists (needed for FK)
     # -------------------------------------------------
     cur.execute("""
         CREATE TABLE IF NOT EXISTS companies (
@@ -81,16 +66,38 @@ def init_db():
         );
     """)
 
+    # -------------------------------------------------
+    # 3) If users exists but is old (no pin), self-heal by dropping users+reports
+    # -------------------------------------------------
+    cur.execute("""
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema='public' AND table_name='users'
+    """)
+    users_exists = cur.fetchone() is not None
+
+    if users_exists and not users_has_pin(cur):
+        # old schema -> drop and rebuild (prevents crash)
+        cur.execute("DROP TABLE IF EXISTS reports CASCADE;")
+        cur.execute("DROP TABLE IF EXISTS users CASCADE;")
+        conn.commit()
+        users_exists = False  # will be recreated below
+
+    # -------------------------------------------------
+    # 4) Create users WITHOUT global unique(name)
+    #    then add UNIQUE(company_id, name)
+    # -------------------------------------------------
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
-            name TEXT UNIQUE NOT NULL,
+            name TEXT NOT NULL,
             pin TEXT NOT NULL,
             company_id INTEGER NOT NULL REFERENCES companies(id),
             created_at TIMESTAMP DEFAULT NOW()
         );
     """)
 
+    # Reports
     cur.execute("""
         CREATE TABLE IF NOT EXISTS reports (
             id SERIAL PRIMARY KEY,
@@ -105,7 +112,87 @@ def init_db():
     """)
 
     # -------------------------------------------------
-    # 3) Seed demo company & user
+    # 5) Migration: remove old UNIQUE(name) if present, then enforce UNIQUE(company_id, name)
+    # -------------------------------------------------
+    try:
+        # Find and drop any unique constraint that is ONLY on (name)
+        cur.execute("""
+            SELECT c.conname
+            FROM pg_constraint c
+            JOIN pg_class t ON t.oid = c.conrelid
+            WHERE t.relname = 'users'
+              AND c.contype = 'u'
+        """)
+        constraints = [r["conname"] for r in cur.fetchall()]
+
+        for conname in constraints:
+            # Check which columns are inside this constraint
+            cur.execute("""
+                SELECT a.attname
+                FROM pg_attribute a
+                JOIN pg_index i ON i.indrelid = a.attrelid AND a.attnum = ANY(i.indkey)
+                JOIN pg_constraint c ON c.conindid = i.indexrelid
+                JOIN pg_class t ON t.oid = c.conrelid
+                WHERE t.relname='users' AND c.conname=%s
+                ORDER BY a.attnum
+            """, (conname,))
+            cols = [x["attname"] for x in cur.fetchall()]
+
+            # If it's exactly ['name'] -> drop it
+            if cols == ["name"]:
+                cur.execute(f'ALTER TABLE users DROP CONSTRAINT "{conname}";')
+                conn.commit()
+
+        # Create the correct unique constraint if not exists
+        cur.execute("""
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint c
+                    JOIN pg_class t ON t.oid = c.conrelid
+                    WHERE t.relname='users' AND c.conname='users_company_id_name_key'
+                ) THEN
+                    ALTER TABLE users
+                    ADD CONSTRAINT users_company_id_name_key UNIQUE (company_id, name);
+                END IF;
+            END $$;
+        """)
+        conn.commit()
+
+    except Exception:
+        # If migration fails for any reason, fallback: rebuild users+reports cleanly
+        conn.rollback()
+        cur.execute("DROP TABLE IF EXISTS reports CASCADE;")
+        cur.execute("DROP TABLE IF EXISTS users CASCADE;")
+        conn.commit()
+
+        # Recreate clean
+        cur.execute("""
+            CREATE TABLE users (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                pin TEXT NOT NULL,
+                company_id INTEGER NOT NULL REFERENCES companies(id),
+                created_at TIMESTAMP DEFAULT NOW(),
+                CONSTRAINT users_company_id_name_key UNIQUE (company_id, name)
+            );
+        """)
+        cur.execute("""
+            CREATE TABLE reports (
+                id SERIAL PRIMARY KEY,
+                company_id INTEGER NOT NULL REFERENCES companies(id),
+                datum TEXT,
+                baustelle TEXT,
+                arbeit TEXT,
+                material TEXT,
+                bemerkung TEXT,
+                created_at TIMESTAMP DEFAULT NOW()
+            );
+        """)
+        conn.commit()
+
+    # -------------------------------------------------
+    # 6) Seed demo company and demo user
     # -------------------------------------------------
     cur.execute("""
         INSERT INTO companies (id, name, contact_email)
@@ -116,7 +203,7 @@ def init_db():
     cur.execute("""
         INSERT INTO users (name, pin, company_id)
         VALUES (%s, %s, %s)
-        ON CONFLICT (name) DO NOTHING;
+        ON CONFLICT (company_id, name) DO NOTHING;
     """, ("Suad", "1234", 1))
 
     conn.commit()
@@ -162,6 +249,8 @@ def login():
 
         conn = get_db()
         cur = conn.cursor()
+        # NOTE: name+pin can exist in multiple companies, but pin should differ.
+        # We'll log in to the first match. Better UX later: ask for company or show list.
         cur.execute(
             "SELECT id, name, company_id FROM users WHERE name = %s AND pin = %s",
             (name, pin),
@@ -211,6 +300,7 @@ def register_company():
         conn = get_db()
         cur = conn.cursor()
 
+        # Create company
         cur.execute(
             """
             INSERT INTO companies (name, contact_email)
@@ -221,12 +311,13 @@ def register_company():
         )
         company_id = int(cur.fetchone()["id"])
 
+        # Create admin user for that company
         cur.execute(
             """
             INSERT INTO users (name, pin, company_id)
             VALUES (%s, %s, %s)
-            ON CONFLICT (name) DO UPDATE
-            SET pin = EXCLUDED.pin, company_id = EXCLUDED.company_id;
+            ON CONFLICT (company_id, name) DO UPDATE
+            SET pin = EXCLUDED.pin;
             """,
             (admin_name, admin_pin, company_id),
         )
@@ -235,7 +326,10 @@ def register_company():
         cur.close()
         conn.close()
 
-        return f"OK ✅ Company created (id={company_id}). Admin: {admin_name}"
+        return (
+            f"OK ✅ Company created (id={company_id}). "
+            f"Admin login: {admin_name} / PIN: {admin_pin}"
+        )
 
     return """
     <h2>Register Company</h2>
