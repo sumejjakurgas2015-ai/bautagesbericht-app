@@ -424,6 +424,68 @@ def list_reports():
 
     return render_template("list.html", reports=reports)
 
+# -------------------------------------------------
+# Users (create/list) - for current company
+# -------------------------------------------------
+@app.route("/users")
+def users_list():
+    if not is_logged_in():
+        return redirect(url_for("login"))
+
+    company_id = current_company_id()
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, name, company_id, created_at FROM users WHERE company_id=%s ORDER BY id DESC",
+        (company_id,),
+    )
+    users = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    return render_template("users.html", users=users)
+
+
+@app.route("/users/add", methods=["GET", "POST"])
+def users_add():
+    if not is_logged_in():
+        return redirect(url_for("login"))
+
+    company_id = current_company_id()
+
+    if request.method == "POST":
+        name = (request.form.get("name") or "").strip()
+        pin = (request.form.get("pin") or "").strip()
+
+        if not name or not pin:
+            flash("Bitte Name und PIN eingeben.", "error")
+            return redirect(url_for("users_add"))
+
+        conn = get_db()
+        cur = conn.cursor()
+        try:
+            # UNIQUE(company_id, name) => ne moze isto ime 2x u istoj firmi
+            cur.execute(
+                """
+                INSERT INTO users (name, pin, company_id)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (company_id, name) DO UPDATE SET pin = EXCLUDED.pin
+                """,
+                (name, pin, company_id),
+            )
+            conn.commit()
+            flash("Benutzer gespeichert.", "success")
+        except Exception as e:
+            conn.rollback()
+            flash(f"Fehler: {str(e)}", "error")
+        finally:
+            cur.close()
+            conn.close()
+
+        return redirect(url_for("users_list"))
+
+    return render_template("users_add.html")
 
 # -------------------------------------------------
 # Run locally

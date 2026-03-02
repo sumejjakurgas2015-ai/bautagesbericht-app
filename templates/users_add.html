@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Benutzer hinzufügen</title>
+</head>
+<body>
+  <h2>Neuen Benutzer hinzufügen</h2>
+
+  <p>
+    <a href="{{ url_for('users_list') }}">Zurück</a> |
+    <a href="{{ url_for('logout') }}">Logout</a>
+  </p>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <ul>
+        {% for category, message in messages %}
+          <li><b>{{ category }}</b>: {{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+
+  <form method="post">
+    <label>Name</label><br>
+    <input name="name" required><br><br>
+
+    <label>PIN</label><br>
+    <input name="pin" required><br><br>
+
+    <button type="submit">Speichern</button>
+  </form>
+</body>
+</html>

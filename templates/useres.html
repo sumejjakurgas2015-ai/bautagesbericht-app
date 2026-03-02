@@ -1,50 +1,41 @@
-{% extends "base.html" %}
-{% block content %}
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Benutzer</title>
+</head>
+<body>
+  <h2>Benutzer (Ihre Firma)</h2>
 
-<h2>Admin – Benutzer</h2>
-<p>Angemeldet als: <b>{{ me["name"] }}</b> ({{ me["role"] }})</p>
+  <p>
+    <a href="{{ url_for('index') }}">Zurück</a> |
+    <a href="{{ url_for('users_add') }}">+ Neuer Benutzer</a> |
+    <a href="{{ url_for('logout') }}">Logout</a>
+  </p>
 
-<div class="card">
-  <h3 style="margin-top:0;">Neuen Benutzer erstellen</h3>
-  <form method="POST">
-    <label>Name</label>
-    <input name="new_name" required>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <ul>
+        {% for category, message in messages %}
+          <li><b>{{ category }}</b>: {{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
 
-    <div style="margin-top:12px;">
-      <label>PIN</label>
-      <input name="new_pin" type="password" inputmode="numeric" required>
-    </div>
-
-    <div style="margin-top:12px;">
-      <label>Rolle</label>
-      <select name="new_role" style="width:100%;padding:10px;border-radius:10px;">
-        <option value="worker">worker</option>
-        <option value="admin">admin</option>
-      </select>
-    </div>
-
-    <div style="margin-top:14px;">
-      <button class="btn btn-primary" type="submit">Erstellen</button>
-    </div>
-  </form>
-</div>
-
-<div class="card">
-  <h3 style="margin-top:0;">Liste</h3>
-  <table style="width:100%; border-collapse:collapse;">
+  <table border="1" cellpadding="6">
     <tr>
-      <th style="text-align:left;padding:8px;border-bottom:1px solid #333;">ID</th>
-      <th style="text-align:left;padding:8px;border-bottom:1px solid #333;">Name</th>
-      <th style="text-align:left;padding:8px;border-bottom:1px solid #333;">Rolle</th>
+      <th>ID</th>
+      <th>Name</th>
+      <th>Erstellt</th>
     </tr>
     {% for u in users %}
-      <tr>
-        <td style="padding:8px;border-bottom:1px solid #222;">{{ u["id"] }}</td>
-        <td style="padding:8px;border-bottom:1px solid #222;">{{ u["name"] }}</td>
-        <td style="padding:8px;border-bottom:1px solid #222;">{{ u["role"] }}</td>
-      </tr>
+    <tr>
+      <td>{{ u.id }}</td>
+      <td>{{ u.name }}</td>
+      <td>{{ u.created_at }}</td>
+    </tr>
     {% endfor %}
   </table>
-</div>
-
-{% endblock %}
+</body>
+</html>
