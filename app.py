@@ -1,11 +1,8 @@
 
-
 import os
-from datetime import datetime
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
-
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 
 # -------------------------------------------------
@@ -19,9 +16,8 @@ app = Flask(
     static_folder=os.path.join(BASE_DIR, "static"),
 )
 
-app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")  # set on Render!
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
 
-# Fallback (lokalno)
 DEFAULT_COMPANY_ID = int(os.environ.get("COMPANY_ID", "1"))
 
 
@@ -39,27 +35,53 @@ def init_db():
     conn = get_db()
     cur = conn.cursor()
 
-    # ✅ RESET FIRST (samo kad RESET_DB == "1")
+    # -------------------------------------------------
+    # 0) SELF-HEAL: if old users table exists without 'pin'
+    #    -> drop users+reports so app never crashes again
+    # -------------------------------------------------
+    cur.execute("""
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema='public' AND table_name='users'
+    """)
+    users_exists = cur.fetchone() is not None
+
+    if users_exists:
+        cur.execute("""
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema='public' AND table_name='users' AND column_name='pin'
+        """)
+        pin_exists = cur.fetchone() is not None
+
+        if not pin_exists:
+            # drop dependent first
+            cur.execute("DROP TABLE IF EXISTS reports CASCADE;")
+            cur.execute("DROP TABLE IF EXISTS users CASCADE;")
+            conn.commit()
+
+    # -------------------------------------------------
+    # 1) Optional full reset
+    # -------------------------------------------------
     if os.environ.get("RESET_DB") == "1":
         cur.execute("DROP TABLE IF EXISTS reports CASCADE;")
         cur.execute("DROP TABLE IF EXISTS users CASCADE;")
         cur.execute("DROP TABLE IF EXISTS companies CASCADE;")
         conn.commit()
 
-    # Create tables
-    cur.execute(
-        """
+    # -------------------------------------------------
+    # 2) Create tables
+    # -------------------------------------------------
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS companies (
             id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
             contact_email TEXT,
             created_at TIMESTAMP DEFAULT NOW()
         );
-        """
-    )
+    """)
 
-    cur.execute(
-        """
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             name TEXT UNIQUE NOT NULL,
@@ -67,11 +89,9 @@ def init_db():
             company_id INTEGER NOT NULL REFERENCES companies(id),
             created_at TIMESTAMP DEFAULT NOW()
         );
-        """
-    )
+    """)
 
-    cur.execute(
-        """
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS reports (
             id SERIAL PRIMARY KEY,
             company_id INTEGER NOT NULL REFERENCES companies(id),
@@ -82,33 +102,29 @@ def init_db():
             bemerkung TEXT,
             created_at TIMESTAMP DEFAULT NOW()
         );
-        """
-    )
+    """)
 
-    # Seed demo company (id=1) and demo user
-    cur.execute(
-        """
+    # -------------------------------------------------
+    # 3) Seed demo company & user
+    # -------------------------------------------------
+    cur.execute("""
         INSERT INTO companies (id, name, contact_email)
         VALUES (1, 'Demo Firma', 'demo@firma.de')
         ON CONFLICT (id) DO NOTHING;
-        """
-    )
+    """)
 
-    cur.execute(
-        """
+    cur.execute("""
         INSERT INTO users (name, pin, company_id)
         VALUES (%s, %s, %s)
         ON CONFLICT (name) DO NOTHING;
-        """,
-        ("Suad", "1234", 1),
-    )
+    """, ("Suad", "1234", 1))
 
     conn.commit()
     cur.close()
     conn.close()
 
 
-# Run DB init once when app starts
+# Init once at startup
 init_db()
 
 
@@ -124,7 +140,7 @@ def current_company_id() -> int:
 
 
 # -------------------------------------------------
-# Health route (Render test)
+# Health
 # -------------------------------------------------
 @app.route("/health")
 def health():
@@ -173,8 +189,7 @@ def logout():
 
 
 # -------------------------------------------------
-# Register new company + admin (protected)
-# URL example: /register-company?key=YOUR_MASTER_KEY
+# Register company + admin (protected)
 # -------------------------------------------------
 @app.route("/register-company", methods=["GET", "POST"])
 def register_company():
@@ -196,7 +211,6 @@ def register_company():
         conn = get_db()
         cur = conn.cursor()
 
-        # Create company
         cur.execute(
             """
             INSERT INTO companies (name, contact_email)
@@ -207,12 +221,12 @@ def register_company():
         )
         company_id = int(cur.fetchone()["id"])
 
-        # Create admin user for that company
         cur.execute(
             """
             INSERT INTO users (name, pin, company_id)
             VALUES (%s, %s, %s)
-            ON CONFLICT (name) DO UPDATE SET pin = EXCLUDED.pin, company_id = EXCLUDED.company_id;
+            ON CONFLICT (name) DO UPDATE
+            SET pin = EXCLUDED.pin, company_id = EXCLUDED.company_id;
             """,
             (admin_name, admin_pin, company_id),
         )
@@ -221,10 +235,7 @@ def register_company():
         cur.close()
         conn.close()
 
-        return (
-            f"OK ✅ Company created (id={company_id}). "
-            f"Admin login: {admin_name} / PIN: {admin_pin}"
-        )
+        return f"OK ✅ Company created (id={company_id}). Admin: {admin_name}"
 
     return """
     <h2>Register Company</h2>
@@ -252,7 +263,7 @@ def routes():
 
 
 # -------------------------------------------------
-# Home / Index (create report + show last reports)
+# Home / Index
 # -------------------------------------------------
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -298,7 +309,7 @@ def index():
 
 
 # -------------------------------------------------
-# List all reports (company isolated)
+# List
 # -------------------------------------------------
 @app.route("/list")
 def list_reports():
