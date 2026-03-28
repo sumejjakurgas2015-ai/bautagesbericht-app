@@ -3,41 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
-
+    <title>Anmeldung</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    <div class="card" style="max-width:420px; margin:40px auto;">
+        <h2 class="section-title">Anmeldung</h2>
 
-<div class="card" style="max-width:400px; margin:50px auto;">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <p>{{ message }}</p>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
 
-    <h2 class="section-title">Anmeldung</h2>
+        <form method="POST">
+            <label for="company">Firma</label>
+            <input type="text" id="company" name="company" required>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <p>{{ message }}</p>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" required>
 
-    <form method="POST">
+            <label for="pin">PIN</label>
+            <input type="password" id="pin" name="pin" required>
 
-        <label>Name:</label>
-        <input type="text" name="name" required>
-
-        <br>
-
-        <label>PIN:</label>
-        <input type="password" name="pin" required>
-
-        <br>
-
-        <button type="submit" class="btn btn-primary">Login</button>
-
-    </form>
-
-</div>
-
+            <br>
+            <button type="submit" class="btn btn-primary">Login</button>
+        </form>
+    </div>
 </body>
 </html>

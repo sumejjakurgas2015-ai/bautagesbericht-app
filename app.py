@@ -227,25 +227,28 @@ def health():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
+        company = (request.form.get("company") or "").strip()
         name = (request.form.get("name") or "").strip()
         pin = (request.form.get("pin") or "").strip()
 
-        if not name or not pin:
-            flash("Bitte Name und PIN eingeben.", "error")
+        if not company or not name or not pin:
+            flash("Bitte Firma, Name und PIN eingeben.", "error")
             return render_template("login.html")
 
         conn = get_db()
-        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur = conn.cursor()
 
         cur.execute(
             """
-            SELECT id, name, company_id
-            FROM users
-            WHERE LOWER(name) = LOWER(%s)
-              AND pin = %s
+            SELECT u.id, u.name, u.company_id
+            FROM users u
+            JOIN companies c ON u.company_id = c.id
+            WHERE LOWER(c.name) = LOWER(%s)
+              AND LOWER(u.name) = LOWER(%s)
+              AND u.pin = %s
             LIMIT 1
             """,
-            (name, pin),
+            (company, name, pin),
         )
 
         user = cur.fetchone()
@@ -255,12 +258,14 @@ def login():
 
         if user:
             session.clear()
-            session["user_id"] = int(user["id"])
-            session["name"] = user["name"]
-            session["company_id"] = int(user["company_id"])
+
+            session["user_id"] = int(user[0])
+            session["name"] = user[1]
+            session["company_id"] = int(user[2])
+
             return redirect(url_for("index"))
 
-        flash("Falscher Name oder PIN.", "error")
+        flash("Falsche Firma, falscher Name oder PIN.", "error")
 
     return render_template("login.html")
 
