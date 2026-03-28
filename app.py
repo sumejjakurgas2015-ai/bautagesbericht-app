@@ -512,7 +512,7 @@ def users_add():
 
     return render_template("users_add.html")
 
-# -------------------------------------------------@app.route("/report/pdf/<int:report_id>")
+@app.route("/report/pdf/<int:report_id>")
 def report_pdf(report_id):
     if not is_logged_in():
         return redirect(url_for("login"))
