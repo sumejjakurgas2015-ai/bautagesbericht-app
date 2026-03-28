@@ -40,7 +40,13 @@
       box-shadow: var(--shadow);
       backdrop-filter: blur(8px);
     }
-    .brand{ font-weight:900; letter-spacing:.2px; display:flex; align-items:center; gap:10px; }
+    .brand{
+      font-weight:900;
+      letter-spacing:.2px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
     a{ color: var(--accent); text-decoration:none; }
     h2{ margin: 14px 0 0 0; }
 
@@ -62,6 +68,7 @@
       gap:14px;
       font-size:14px;
     }
+
     .btn-logout{
       background: var(--danger);
       padding:6px 10px;
@@ -82,17 +89,13 @@
       </div>
 
       <div class="nav-links">
-        {% if me %}
+        {% if session.get("user_id") %}
           <span style="opacity:.8;">
-            👷 {{ me["name"] }} ({{ me["role"] }})
+            👷 {{ session.get("name") }}
           </span>
 
           <a href="{{ url_for('list_reports') }}">Liste</a>
-
-          {% if me["role"] == "admin" %}
-            <a href="{{ url_for('admin_users') }}">Admin</a>
-          {% endif %}
-
+          <a href="{{ url_for('users_list') }}">Benutzer</a>
           <a class="btn-logout" href="{{ url_for('logout') }}">Logout</a>
         {% else %}
           <a href="{{ url_for('login') }}">Login</a>
