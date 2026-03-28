@@ -2,15 +2,14 @@
 <html lang="de">
 <head>
   <link rel="manifest" href="/static/manifest.json">
-<link rel="icon" href="/static/icon-192.png">
-<link rel="apple-touch-icon" href="/static/icon-512.png">
-<meta name="theme-color" content="#0f172a">
+  <link rel="icon" href="/static/icon-192.png">
+  <link rel="apple-touch-icon" href="/static/icon-512.png">
+  <meta name="theme-color" content="#0f172a">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Bautagesbericht</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <style>
-    
     :root{
       --bg:#0b1220;
       --card:#0f1b33;
@@ -75,18 +74,14 @@
 <body>
   <div class="wrap">
     <div class="topbar">
-
-      <!-- Logo + naziv -->
       <div class="brand">
-        <img src="{{ url_for('static', filename='logo.png') }}" 
+        <img src="{{ url_for('static', filename='logo.png') }}"
              alt="Logo"
              style="height:34px; width:auto; border-radius:8px;">
         <span>Bautagesbericht</span>
       </div>
 
-      <!-- DESNA STRANA -->
       <div class="nav-links">
-
         {% if me %}
           <span style="opacity:.8;">
             👷 {{ me["name"] }} ({{ me["role"] }})
@@ -99,14 +94,10 @@
           {% endif %}
 
           <a class="btn-logout" href="{{ url_for('logout') }}">Logout</a>
-
         {% else %}
           <a href="{{ url_for('login') }}">Login</a>
-          <a href="{{ url_for('logout') }}">Logout</a>
         {% endif %}
-
       </div>
-
     </div>
 
     <div class="content">
@@ -121,6 +112,7 @@
       {% block content %}{% endblock %}
     </div>
   </div>
+
+  <script src="/static/notifications.js"></script>
 </body>
 </html>
-<script src="/static/notifications.js"></script>
