@@ -43,27 +43,19 @@ def get_db():
     return psycopg2.connect(db_url, cursor_factory=RealDictCursor)
 
 
-def users_has_pin(cur) -> bool:
-    cur.execute(
-        """
-        SELECT 1
-        FROM information_schema.columns
-        WHERE table_schema='public' AND table_name='users' AND column_name='pin'
-        """
-    )
-    return cur.fetchone() is not None
-
-
 def add_column_if_missing(cur, table_name: str, column_name: str, column_def: str):
     cur.execute(
         """
         SELECT 1
         FROM information_schema.columns
-        WHERE table_schema='public' AND table_name=%s AND column_name=%s
+        WHERE table_schema = 'public'
+          AND table_name = %s
+          AND column_name = %s
         """,
         (table_name, column_name),
     )
     exists = cur.fetchone() is not None
+
     if not exists:
         cur.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_def};")
 
@@ -72,70 +64,61 @@ def init_db():
     conn = get_db()
     cur = conn.cursor()
 
-    # companies tabela
-    cur.execute("""
+    # -------------------------------------------------
+    # 1) Companies
+    # -------------------------------------------------
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS companies (
             id SERIAL PRIMARY KEY,
             name VARCHAR(200) NOT NULL UNIQUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
-    """)
-
-    # users tabela (ako već postoji, neće je dirati)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(100),
-            pin VARCHAR(20),
-            company_id INTEGER,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    """)
-
-    conn.commit()
-    cur.close()
-    conn.close()
-    
-@app.before_request
-def setup():
-    init_db()
-    # -------------------------------------------------
-    # 3) Users
-    # -------------------------------------------------
-    cur.execute(
-        """
-        SELECT 1
-        FROM information_schema.tables
-        WHERE table_schema='public' AND table_name='users'
         """
     )
-    users_exists = cur.fetchone() is not None
 
-    if users_exists and not users_has_pin(cur):
-        cur.execute("DROP TABLE IF EXISTS reports CASCADE;")
-        cur.execute("DROP TABLE IF EXISTS users CASCADE;")
-        conn.commit()
-
+    # -------------------------------------------------
+    # 2) Users
+    # -------------------------------------------------
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
             pin TEXT NOT NULL,
-            company_id INTEGER NOT NULL REFERENCES companies(id),
+            company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
             created_at TIMESTAMP DEFAULT NOW()
         );
         """
     )
 
+    # unique user name inside one company
+    cur.execute(
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1
+                FROM pg_constraint c
+                JOIN pg_class t ON t.oid = c.conrelid
+                WHERE t.relname = 'users'
+                  AND c.conname = 'users_company_id_name_key'
+            ) THEN
+                ALTER TABLE users
+                ADD CONSTRAINT users_company_id_name_key UNIQUE (company_id, name);
+            END IF;
+        END $$;
+        """
+    )
+
     # -------------------------------------------------
-    # 4) Reports base table
+    # 3) Reports
     # -------------------------------------------------
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS reports (
             id SERIAL PRIMARY KEY,
-            company_id INTEGER NOT NULL REFERENCES companies(id),
+            company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
             datum TEXT,
             baustelle TEXT,
             arbeit TEXT,
@@ -146,9 +129,7 @@ def setup():
         """
     )
 
-    # -------------------------------------------------
-    # 5) Reports extra columns used in templates
-    # -------------------------------------------------
+    # extra columns used in templates/forms
     add_column_if_missing(cur, "reports", "wetter", "TEXT")
     add_column_if_missing(cur, "reports", "arbeitszeit_von", "TEXT")
     add_column_if_missing(cur, "reports", "arbeitszeit_bis", "TEXT")
@@ -169,70 +150,13 @@ def setup():
     add_column_if_missing(cur, "reports", "lkw_fahrer_name", "TEXT")
     add_column_if_missing(cur, "reports", "lkw_fahrer_stunden", "NUMERIC")
 
-    conn.commit()
-
     # -------------------------------------------------
-    # 6) Unique constraint users(company_id, name)
-    # -------------------------------------------------
-    try:
-        cur.execute(
-            """
-            SELECT c.conname
-            FROM pg_constraint c
-            JOIN pg_class t ON t.oid = c.conrelid
-            WHERE t.relname = 'users'
-              AND c.contype = 'u'
-            """
-        )
-        constraints = [r["conname"] for r in cur.fetchall()]
-
-        for conname in constraints:
-            cur.execute(
-                """
-                SELECT a.attname
-                FROM pg_attribute a
-                JOIN pg_index i ON i.indrelid = a.attrelid AND a.attnum = ANY(i.indkey)
-                JOIN pg_constraint c ON c.conindid = i.indexrelid
-                JOIN pg_class t ON t.oid = c.conrelid
-                WHERE t.relname='users' AND c.conname=%s
-                ORDER BY a.attnum
-                """,
-                (conname,),
-            )
-            cols = [x["attname"] for x in cur.fetchall()]
-            if cols == ["name"]:
-                cur.execute(f'ALTER TABLE users DROP CONSTRAINT "{conname}";')
-                conn.commit()
-
-        cur.execute(
-            """
-            DO $$
-            BEGIN
-                IF NOT EXISTS (
-                    SELECT 1
-                    FROM pg_constraint c
-                    JOIN pg_class t ON t.oid = c.conrelid
-                    WHERE t.relname='users'
-                      AND c.conname='users_company_id_name_key'
-                ) THEN
-                    ALTER TABLE users
-                    ADD CONSTRAINT users_company_id_name_key UNIQUE (company_id, name);
-                END IF;
-            END $$;
-            """
-        )
-        conn.commit()
-
-    except Exception:
-        conn.rollback()
-
-    # -------------------------------------------------
-    # 7) Seed demo company and demo user
+    # 4) Demo company + demo user
     # -------------------------------------------------
     cur.execute(
         """
-        INSERT INTO companies (id, name, contact_email)
-        VALUES (1, 'Demo Firma', 'demo@firma.de')
+        INSERT INTO companies (id, name)
+        VALUES (1, 'Firma1')
         ON CONFLICT (id) DO NOTHING;
         """
     )
@@ -251,7 +175,7 @@ def setup():
     conn.close()
 
 
-# Init once at startup
+# init once on startup
 init_db()
 
 
@@ -298,6 +222,9 @@ def health():
     return "OK", 200
 
 
+# -------------------------------------------------
+# Login / Logout
+# -------------------------------------------------
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -346,7 +273,7 @@ def logout():
 
 
 # -------------------------------------------------
-# Register company + admin
+# Register company + first admin
 # -------------------------------------------------
 @app.route("/register-company", methods=["GET", "POST"])
 def register_company():
@@ -358,7 +285,6 @@ def register_company():
 
     if request.method == "POST":
         company_name = (request.form.get("company_name") or "").strip()
-        company_email = (request.form.get("company_email") or "").strip()
         admin_name = (request.form.get("admin_name") or "").strip()
         admin_pin = (request.form.get("admin_pin") or "").strip()
 
@@ -368,14 +294,11 @@ def register_company():
         conn = get_db()
         cur = conn.cursor()
 
-        cur.execute(
-            """
-            INSERT INTO companies (name, contact_email)
-            VALUES (%s, %s)
-            RETURNING id;
-            """,
-            (company_name, company_email or None),
-        )
+        cur.execute("""
+    INSERT INTO companies (id, name)
+    VALUES (1, 'Firma1')
+    ON CONFLICT (id) DO NOTHING;
+""")
         company_id = int(cur.fetchone()["id"])
 
         cur.execute(
@@ -402,9 +325,6 @@ def register_company():
     <form method="post">
       <label>Company Name*</label><br>
       <input name="company_name" required><br><br>
-
-      <label>Company Email</label><br>
-      <input name="company_email"><br><br>
 
       <label>Admin Name*</label><br>
       <input name="admin_name" required><br><br>
@@ -492,16 +412,30 @@ def index():
             )
             """,
             (
-                company_id, datum, wetter,
-                arbeitszeit_von, arbeitszeit_bis, pause_stunden, netto_stunden,
-                baustelle, team,
-                polier_name, polier_stunden,
-                vorarbeiter_name, vorarbeiter_stunden,
-                facharbeiter_name, facharbeiter_stunden,
-                elektriker_name, elektriker_stunden,
-                helfer_name, helfer_stunden,
-                lkw_fahrer_name, lkw_fahrer_stunden,
-                arbeit, material, bemerkung,
+                company_id,
+                datum,
+                wetter,
+                arbeitszeit_von,
+                arbeitszeit_bis,
+                pause_stunden,
+                netto_stunden,
+                baustelle,
+                team,
+                polier_name,
+                polier_stunden,
+                vorarbeiter_name,
+                vorarbeiter_stunden,
+                facharbeiter_name,
+                facharbeiter_stunden,
+                elektriker_name,
+                elektriker_stunden,
+                helfer_name,
+                helfer_stunden,
+                lkw_fahrer_name,
+                lkw_fahrer_stunden,
+                arbeit,
+                material,
+                bemerkung,
             ),
         )
         conn.commit()
@@ -710,33 +644,39 @@ def report_pdf(report_id):
     y -= 20
     p.setFont("Helvetica", 11)
     p.drawString(
-        50, y,
-        f"Polier: {report.get('polier_name') or '-'} ({report.get('polier_stunden') or 0} h)"
+        50,
+        y,
+        f"Polier: {report.get('polier_name') or '-'} ({report.get('polier_stunden') or 0} h)",
     )
     y -= 18
     p.drawString(
-        50, y,
-        f"Vorarbeiter: {report.get('vorarbeiter_name') or '-'} ({report.get('vorarbeiter_stunden') or 0} h)"
+        50,
+        y,
+        f"Vorarbeiter: {report.get('vorarbeiter_name') or '-'} ({report.get('vorarbeiter_stunden') or 0} h)",
     )
     y -= 18
     p.drawString(
-        50, y,
-        f"Facharbeiter: {report.get('facharbeiter_name') or '-'} ({report.get('facharbeiter_stunden') or 0} h)"
+        50,
+        y,
+        f"Facharbeiter: {report.get('facharbeiter_name') or '-'} ({report.get('facharbeiter_stunden') or 0} h)",
     )
     y -= 18
     p.drawString(
-        50, y,
-        f"Elektriker: {report.get('elektriker_name') or '-'} ({report.get('elektriker_stunden') or 0} h)"
+        50,
+        y,
+        f"Elektriker: {report.get('elektriker_name') or '-'} ({report.get('elektriker_stunden') or 0} h)",
     )
     y -= 18
     p.drawString(
-        50, y,
-        f"Helfer: {report.get('helfer_name') or '-'} ({report.get('helfer_stunden') or 0} h)"
+        50,
+        y,
+        f"Helfer: {report.get('helfer_name') or '-'} ({report.get('helfer_stunden') or 0} h)",
     )
     y -= 18
     p.drawString(
-        50, y,
-        f"LKW Fahrer: {report.get('lkw_fahrer_name') or '-'} ({report.get('lkw_fahrer_stunden') or 0} h)"
+        50,
+        y,
+        f"LKW Fahrer: {report.get('lkw_fahrer_name') or '-'} ({report.get('lkw_fahrer_stunden') or 0} h)",
     )
 
     y -= 28
