@@ -4,6 +4,10 @@ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from flask import Flask, render_template, request, redirect, url_for, flash, session
+from io import BytesIO
+from flask import send_file
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
 
 # -------------------------------------------------
 # App setup
@@ -487,7 +491,63 @@ def users_add():
 
     return render_template("users_add.html")
 
-# -------------------------------------------------
+# -------------------------------------------------@app.route("/report/pdf/<int:report_id>")
+def report_pdf(report_id):
+    if not is_logged_in():
+        return redirect(url_for("login"))
+
+    company_id = current_company_id()
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT * FROM reports
+        WHERE id = %s AND company_id = %s
+        """,
+        (report_id, company_id),
+    )
+    report = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not report:
+        return "Bericht nicht gefunden", 404
+
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+
+    y = height - 50
+    p.setFont("Helvetica-Bold", 16)
+    p.drawString(50, y, "Bautagesbericht")
+
+    y -= 40
+    p.setFont("Helvetica", 12)
+    p.drawString(50, y, f"Datum: {report.get('datum') or ''}")
+
+    y -= 25
+    p.drawString(50, y, f"Baustelle: {report.get('baustelle') or ''}")
+
+    y -= 25
+    p.drawString(50, y, f"Arbeit: {report.get('arbeit') or ''}")
+
+    y -= 25
+    p.drawString(50, y, f"Material: {report.get('material') or ''}")
+
+    y -= 25
+    p.drawString(50, y, f"Bemerkung: {report.get('bemerkung') or ''}")
+
+    p.showPage()
+    p.save()
+
+    buffer.seek(0)
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f"bautagesbericht_{report_id}.pdf",
+        mimetype="application/pdf"
+    )
 # Run locally
 # -------------------------------------------------
 if __name__ == "__main__":

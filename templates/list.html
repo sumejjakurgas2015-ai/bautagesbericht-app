@@ -31,6 +31,7 @@
           <th>Material</th>
           <th>Bemerkung</th>
           <th>Erstellt</th>
+          <th>PDF</th>
         </tr>
       </thead>
       <tbody>
@@ -43,6 +44,7 @@
           <td>{{ r["material"] or "" }}</td>
           <td>{{ r["bemerkung"] or "" }}</td>
           <td>{{ r["created_at"] or "" }}</td>
+          <td><a href="{{ url_for('report_pdf', report_id=report.id) }}">PDF</a></td>
         </tr>
         {% endfor %}
       </tbody>
