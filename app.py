@@ -170,8 +170,9 @@ def init_db():
         VALUES (%s, %s, %s, %s)
         ON CONFLICT (company_id, name) DO NOTHING;
         """,
-        ("Suad", "1234", "admin", 1),
     )
+    # demo user iskljucen
+    pass
 
     conn.commit()
     cur.close()
