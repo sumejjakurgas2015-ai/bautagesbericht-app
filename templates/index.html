@@ -195,15 +195,13 @@ button {
 {% if reports %}
   <ul>
     {% for r in reports %}
-      <li>
-        <strong>{{ r["baustelle"] }}</strong> –
-        {{ r["arbeit"] }} –
-        {{ r["created_at"] }}
-      </li>
-    {% endfor %}
-  </ul>
-{% else %}
-  <p>Keine Berichte vorhanden.</p>
-{% endif %}
-
-{% endblock %}
+  <li>
+    <strong>{{ r["baustelle"] }}</strong> –
+    {{ r["arbeit"] }} –
+    {{ r["created_at"] }}
+    |
+    <a href="/detail/{{ r['id'] }}">Detalji</a>
+    |
+    <a href="/report/pdf/{{ r['id'] }}" target="_blank">PDF</a>
+  </li>
+{% endfor %}
