@@ -235,7 +235,7 @@ def register():
         cur = conn.cursor()
 
         try:
-            # provjera da li firma već postoji
+            # Provjera da li firma već postoji
             cur.execute(
                 "SELECT id FROM companies WHERE LOWER(name) = LOWER(%s) LIMIT 1",
                 (company,)
@@ -248,14 +248,36 @@ def register():
                 flash("Diese Firma existiert bereits. Bitte loggen Sie sich ein.", "error")
                 return render_template("register.html")
 
-            # kreiraj novu firmu
+            # Popravi sequence za companies
+            cur.execute(
+                """
+                SELECT setval(
+                    'companies_id_seq',
+                    COALESCE((SELECT MAX(id) FROM companies), 1),
+                    true
+                )
+                """
+            )
+
+            # Kreiraj novu firmu
             cur.execute(
                 "INSERT INTO companies (name) VALUES (%s) RETURNING id",
                 (company,)
             )
             company_id = cur.fetchone()[0]
 
-            # kreiraj prvog admin korisnika za tu firmu
+            # Popravi sequence za users
+            cur.execute(
+                """
+                SELECT setval(
+                    'users_id_seq',
+                    COALESCE((SELECT MAX(id) FROM users), 1),
+                    true
+                )
+                """
+            )
+
+            # Kreiraj admin korisnika za tu firmu
             cur.execute(
                 """
                 INSERT INTO users (name, pin, role, company_id)
@@ -268,7 +290,7 @@ def register():
 
             conn.commit()
 
-            # automatski login nakon registracije
+            # Automatski login nakon registracije
             session.clear()
             session["user_id"] = int(user_id)
             session["name"] = name
