@@ -1,4 +1,4 @@
-from psycopg2.extras import RealDictCursor
+
 import os
 from io import BytesIO
 
