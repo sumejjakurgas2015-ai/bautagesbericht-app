@@ -1,6 +1,8 @@
+from psycopg2.extras import RealDictCursor
 import os
 from io import BytesIO
-from datetime import date
+
+
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -222,35 +224,32 @@ def health():
     return "OK", 200
 
 
-# -------------------------------------------------
-# Login / Logout
-# -------------------------------------------------
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        company = (request.form.get("company") or "").strip()
         name = (request.form.get("name") or "").strip()
         pin = (request.form.get("pin") or "").strip()
 
-        if not company or not name or not pin:
-            flash("Bitte Firma, Name und PIN eingeben.", "error")
+        if not name or not pin:
+            flash("Bitte Name und PIN eingeben.", "error")
             return render_template("login.html")
 
         conn = get_db()
-        cur = conn.cursor()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+
         cur.execute(
             """
-            SELECT u.id, u.name, u.company_id
-            FROM users u
-            JOIN companies c ON u.company_id = c.id
-            WHERE LOWER(c.name) = LOWER(%s)
-              AND LOWER(u.name) = LOWER(%s)
-              AND u.pin = %s
+            SELECT id, name, company_id
+            FROM users
+            WHERE LOWER(name) = LOWER(%s)
+              AND pin = %s
             LIMIT 1
             """,
-            (company, name, pin),
+            (name, pin),
         )
+
         user = cur.fetchone()
+
         cur.close()
         conn.close()
 
@@ -261,7 +260,7 @@ def login():
             session["company_id"] = int(user["company_id"])
             return redirect(url_for("index"))
 
-        flash("Falsche Firma, falscher Name oder PIN.", "error")
+        flash("Falscher Name oder PIN.", "error")
 
     return render_template("login.html")
 
