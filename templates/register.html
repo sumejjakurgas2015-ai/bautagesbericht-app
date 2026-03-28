@@ -1,27 +1,26 @@
-
 {% extends "base.html" %}
 
 {% block content %}
 <div class="card" style="max-width:420px; margin:40px auto;">
-    <h2 class="section-title">Anmeldung</h2>
+    <h2 class="section-title">Firma registrieren</h2>
 
     <form method="POST">
         <label>Firma</label>
         <input type="text" name="company" required>
 
-        <label>Name</label>
+        <label>Admin Name</label>
         <input type="text" name="name" required>
 
         <label>PIN</label>
         <input type="password" name="pin" required>
 
         <br><br>
-        <button type="submit">Login</button>
+        <button type="submit">Registrieren</button>
     </form>
 
     <p style="margin-top:16px;">
-        Noch keine Firma?
-        <a href="{{ url_for('register') }}">Jetzt registrieren</a>
+        Bereits registriert?
+        <a href="{{ url_for('login') }}">Zum Login</a>
     </p>
 </div>
 {% endblock %}

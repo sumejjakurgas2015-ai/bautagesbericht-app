@@ -220,6 +220,74 @@ def calculate_netto_hours(von: str, bis: str, pause_hours: float) -> float:
 def health():
     return "OK", 200
 
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        company = (request.form.get("company") or "").strip()
+        name = (request.form.get("name") or "").strip()
+        pin = (request.form.get("pin") or "").strip()
+
+        if not company or not name or not pin:
+            flash("Bitte Firma, Name und PIN eingeben.", "error")
+            return render_template("register.html")
+
+        conn = get_db()
+        cur = conn.cursor()
+
+        try:
+            # provjera da li firma već postoji
+            cur.execute(
+                "SELECT id FROM companies WHERE LOWER(name) = LOWER(%s) LIMIT 1",
+                (company,)
+            )
+            existing_company = cur.fetchone()
+
+            if existing_company:
+                cur.close()
+                conn.close()
+                flash("Diese Firma existiert bereits. Bitte loggen Sie sich ein.", "error")
+                return render_template("register.html")
+
+            # kreiraj novu firmu
+            cur.execute(
+                "INSERT INTO companies (name) VALUES (%s) RETURNING id",
+                (company,)
+            )
+            company_id = cur.fetchone()[0]
+
+            # kreiraj prvog admin korisnika za tu firmu
+            cur.execute(
+                """
+                INSERT INTO users (name, pin, role, company_id)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id
+                """,
+                (name, pin, "admin", company_id)
+            )
+            user_id = cur.fetchone()[0]
+
+            conn.commit()
+
+            # automatski login nakon registracije
+            session.clear()
+            session["user_id"] = int(user_id)
+            session["name"] = name
+            session["company_id"] = int(company_id)
+
+            cur.close()
+            conn.close()
+
+            flash("Firma und Admin wurden erfolgreich erstellt.", "success")
+            return redirect(url_for("index"))
+
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            flash(f"Fehler bei der Registrierung: {e}", "error")
+
+    return render_template("register.html")
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
