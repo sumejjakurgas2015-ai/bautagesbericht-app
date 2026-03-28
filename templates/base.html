@@ -74,7 +74,7 @@
       padding:6px 10px;
       border-radius:10px;
       font-weight:600;
-      color:white;
+      color:white !important;
     }
   </style>
 </head>
@@ -89,11 +89,10 @@
       </div>
 
       <div class="nav-links">
-        {% if session.get("user_id") %}
+        {% if user_id %}
           <span style="opacity:.8;">
-            👷 {{ session.get("name") }}
+            👷 {{ user_name }}
           </span>
-
           <a href="{{ url_for('list_reports') }}">Liste</a>
           <a href="{{ url_for('users_list') }}">Benutzer</a>
           <a class="btn-logout" href="{{ url_for('logout') }}">Logout</a>

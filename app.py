@@ -357,7 +357,14 @@ def login():
 @app.route("/logout")
 def logout():
     session.clear()
-    return redirect(url_for("login"))
+    return redirect(url_for("login"))@app.context_processor
+def inject_user():
+    return dict(
+        user_id=session.get("user_id"),
+        user_name=session.get("name"),
+    )
+
+
 
 
 @app.route("/routes")
