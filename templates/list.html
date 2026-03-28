@@ -1,60 +1,55 @@
-﻿<!doctype html>
+﻿
+<!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Berichte</title>
-  <style>
-    body { font-family: Arial, sans-serif; padding: 16px; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 10px; border-bottom: 1px solid #ddd; vertical-align: top; }
-    th { text-align: left; }
-    .top { display:flex; gap:12px; align-items:center; margin-bottom: 12px; }
-    a { text-decoration:none; }
-  </style>
+    <meta charset="UTF-8">
+    <title>Berichte</title>
 </head>
 <body>
-  <div class="top">
-    <h2 style="margin:0;">Berichte (meine Firma)</h2>
-    <a href="{{ url_for('index') }}">➜ Neuer Bericht</a>
-    <a href="{{ url_for('logout') }}">Logout</a>
-  </div>
+    <h1>Berichte (meine Firma)</h1>
 
-  {% if reports %}
-<table border="1" cellpadding="8">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Datum</th>
-            <th>Baustelle</th>
-            <th>Arbeit</th>
-            <th>Material</th>
-            <th>Bemerkung</th>
-            <th>Created</th>
-            <th>Detail</th>
-            <th>PDF</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for r in reports %}
-        <tr>
-            <td>{{ r["id"] }}</td>
-            <td>{{ r["datum"] or "" }}</td>
-            <td>{{ r["baustelle"] or "" }}</td>
-            <td>{{ r["arbeit"] or "" }}</td>
-            <td>{{ r["material"] or "" }}</td>
-            <td>{{ r["bemerkung"] or "" }}</td>
-            <td>{{ r["created_at"] or "" }}</td>
-            <td>
-                <a href="/detail/{{ r['id'] }}">Detalji</a>
-            </td>
-            <td>
-                <a href="/report/pdf/{{ r['id'] }}" target="_blank">PDF</a>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-{% else %}
-<p>Noch keine Berichte vorhanden.</p>
-{% endif %}
+    <p>
+        <a href="{{ url_for('index') }}">Neuer Bericht</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
+    </p>
+
+    {% if reports %}
+    <table border="1" cellpadding="8">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Datum</th>
+                <th>Baustelle</th>
+                <th>Arbeit</th>
+                <th>Material</th>
+                <th>Bemerkung</th>
+                <th>Created</th>
+                <th>Detail</th>
+                <th>PDF</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in reports %}
+            <tr>
+                <td>{{ r["id"] }}</td>
+                <td>{{ r["datum"] or "" }}</td>
+                <td>{{ r["baustelle"] or "" }}</td>
+                <td>{{ r["arbeit"] or "" }}</td>
+                <td>{{ r["material"] or "" }}</td>
+                <td>{{ r["bemerkung"] or "" }}</td>
+                <td>{{ r["created_at"] or "" }}</td>
+                <td>
+                    <a href="/detail/{{ r['id'] }}">Detalji</a>
+                </td>
+                <td>
+                    <a href="/report/pdf/{{ r['id'] }}" target="_blank">PDF</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>Noch keine Berichte vorhanden.</p>
+    {% endif %}
+</body>
+</html>
