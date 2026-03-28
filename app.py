@@ -1,5 +1,6 @@
 import os
-from datetime import date   # 👈 OVO DODAJ
+from datetime import date
+from io import BytesIO
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -85,11 +86,14 @@ def init_db():
             id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
             pin TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'admin',
             company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
             created_at TIMESTAMP DEFAULT NOW()
         );
         """
     )
+
+    add_column_if_missing(cur, "users", "role", "TEXT DEFAULT 'admin'")
 
     # unique user name inside one company
     cur.execute(
@@ -162,11 +166,11 @@ def init_db():
 
     cur.execute(
         """
-        INSERT INTO users (name, pin, company_id)
-        VALUES (%s, %s, %s)
+        INSERT INTO users (name, pin, role, company_id)
+        VALUES (%s, %s, %s, %s)
         ON CONFLICT (company_id, name) DO NOTHING;
         """,
-        ("Suad", "1234", 1),
+        ("Suad", "1234", "admin", 1),
     )
 
     conn.commit()
@@ -220,6 +224,10 @@ def calculate_netto_hours(von: str, bis: str, pause_hours: float) -> float:
 def health():
     return "OK", 200
 
+
+# -------------------------------------------------
+# Register
+# -------------------------------------------------
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -235,82 +243,71 @@ def register():
         cur = conn.cursor()
 
         try:
-            # Provjera da li firma već postoji
+            # provjera da li firma već postoji
             cur.execute(
                 "SELECT id FROM companies WHERE LOWER(name) = LOWER(%s) LIMIT 1",
-                (company,)
+                (company,),
             )
             existing_company = cur.fetchone()
 
             if existing_company:
-                cur.close()
-                conn.close()
                 flash("Diese Firma existiert bereits. Bitte loggen Sie sich ein.", "error")
                 return render_template("register.html")
 
-            # Popravi sequence za companies
+            # ručno postavi novi company id
             cur.execute(
                 """
-                SELECT setval(
-                    'companies_id_seq',
-                    COALESCE((SELECT MAX(id) FROM companies), 1),
-                    true
+                INSERT INTO companies (id, name)
+                VALUES (
+                    (SELECT COALESCE(MAX(id), 0) + 1 FROM companies),
+                    %s
                 )
-                """
-            )
-
-            # Kreiraj novu firmu
-            cur.execute(
-                "INSERT INTO companies (name) VALUES (%s) RETURNING id",
-                (company,)
-            )
-            company_id = cur.fetchone()[0]
-
-            # Popravi sequence za users
-            cur.execute(
-                """
-                SELECT setval(
-                    'users_id_seq',
-                    COALESCE((SELECT MAX(id) FROM users), 1),
-                    true
-                )
-                """
-            )
-
-            # Kreiraj admin korisnika za tu firmu
-            cur.execute(
-                """
-                INSERT INTO users (name, pin, role, company_id)
-                VALUES (%s, %s, %s, %s)
                 RETURNING id
                 """,
-                (name, pin, "admin", company_id)
+                (company,),
             )
-            user_id = cur.fetchone()[0]
+            company_row = cur.fetchone()
+            company_id = int(company_row["id"])
+
+            # ručno postavi novi user id
+            cur.execute(
+                """
+                INSERT INTO users (id, name, pin, role, company_id)
+                VALUES (
+                    (SELECT COALESCE(MAX(id), 0) + 1 FROM users),
+                    %s, %s, %s, %s
+                )
+                RETURNING id
+                """,
+                (name, pin, "admin", company_id),
+            )
+            user_row = cur.fetchone()
+            user_id = int(user_row["id"])
 
             conn.commit()
 
-            # Automatski login nakon registracije
+            # automatski login
             session.clear()
-            session["user_id"] = int(user_id)
+            session["user_id"] = user_id
             session["name"] = name
-            session["company_id"] = int(company_id)
-
-            cur.close()
-            conn.close()
+            session["company_id"] = company_id
 
             flash("Firma und Admin wurden erfolgreich erstellt.", "success")
             return redirect(url_for("index"))
 
         except Exception as e:
             conn.rollback()
+            flash(f"Fehler bei der Registrierung: {str(e)}", "error")
+        finally:
             cur.close()
             conn.close()
-            flash(f"Fehler bei der Registrierung: {e}", "error")
 
     return render_template("register.html")
 
 
+# -------------------------------------------------
+# Login
+# -------------------------------------------------
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -325,34 +322,33 @@ def login():
         conn = get_db()
         cur = conn.cursor()
 
-        cur.execute(
-            """
-            SELECT u.id, u.name, u.company_id
-            FROM users u
-            JOIN companies c ON u.company_id = c.id
-            WHERE LOWER(c.name) = LOWER(%s)
-              AND LOWER(u.name) = LOWER(%s)
-              AND u.pin = %s
-            LIMIT 1
-            """,
-            (company, name, pin),
-        )
+        try:
+            cur.execute(
+                """
+                SELECT u.id, u.name, u.company_id
+                FROM users u
+                JOIN companies c ON u.company_id = c.id
+                WHERE LOWER(c.name) = LOWER(%s)
+                  AND LOWER(u.name) = LOWER(%s)
+                  AND u.pin = %s
+                LIMIT 1
+                """,
+                (company, name, pin),
+            )
 
-        user = cur.fetchone()
+            user = cur.fetchone()
 
-        cur.close()
-        conn.close()
+            if user:
+                session.clear()
+                session["user_id"] = int(user["id"])
+                session["name"] = user["name"]
+                session["company_id"] = int(user["company_id"])
+                return redirect(url_for("index"))
 
-        if user:
-            session.clear()
-
-            session["user_id"] = int(user[0])
-            session["name"] = user[1]
-            session["company_id"] = int(user[2])
-
-            return redirect(url_for("index"))
-
-        flash("Falsche Firma, falscher Name oder PIN.", "error")
+            flash("Falsche Firma, falscher Name oder PIN.", "error")
+        finally:
+            cur.close()
+            conn.close()
 
     return render_template("login.html")
 
@@ -361,71 +357,6 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for("login"))
-
-
-# -------------------------------------------------
-# Register company + first admin
-# -------------------------------------------------
-@app.route("/register-company", methods=["GET", "POST"])
-def register_company():
-    master_key = os.environ.get("ADMIN_MASTER_KEY", "")
-    key = request.args.get("key", "")
-
-    if not master_key or key != master_key:
-        return "Forbidden", 403
-
-    if request.method == "POST":
-        company_name = (request.form.get("company_name") or "").strip()
-        admin_name = (request.form.get("admin_name") or "").strip()
-        admin_pin = (request.form.get("admin_pin") or "").strip()
-
-        if not company_name or not admin_name or not admin_pin:
-            return "Bitte alle Pflichtfelder ausfüllen.", 400
-
-        conn = get_db()
-        cur = conn.cursor()
-
-        cur.execute("""
-    INSERT INTO companies (id, name)
-    VALUES (1, 'Firma1')
-    ON CONFLICT (id) DO NOTHING;
-""")
-        company_id = int(cur.fetchone()["id"])
-
-        cur.execute(
-            """
-            INSERT INTO users (name, pin, company_id)
-            VALUES (%s, %s, %s)
-            ON CONFLICT (company_id, name) DO UPDATE
-            SET pin = EXCLUDED.pin;
-            """,
-            (admin_name, admin_pin, company_id),
-        )
-
-        conn.commit()
-        cur.close()
-        conn.close()
-
-        return (
-            f"OK ✅ Company created (id={company_id}). "
-            f"Admin login: {admin_name} / PIN: {admin_pin}"
-        )
-
-    return """
-    <h2>Register Company</h2>
-    <form method="post">
-      <label>Company Name*</label><br>
-      <input name="company_name" required><br><br>
-
-      <label>Admin Name*</label><br>
-      <input name="admin_name" required><br><br>
-
-      <label>Admin PIN*</label><br>
-      <input name="admin_pin" required><br><br>
-
-      <button type="submit">Create</button>
-    </form>
-    """
 
 
 @app.route("/routes")
@@ -475,65 +406,70 @@ def index():
 
         conn = get_db()
         cur = conn.cursor()
-        cur.execute(
-            """
-            INSERT INTO reports (
-                company_id, datum, wetter,
-                arbeitszeit_von, arbeitszeit_bis, pause_stunden, netto_stunden,
-                baustelle, team,
-                polier_name, polier_stunden,
-                vorarbeiter_name, vorarbeiter_stunden,
-                facharbeiter_name, facharbeiter_stunden,
-                elektriker_name, elektriker_stunden,
-                helfer_name, helfer_stunden,
-                lkw_fahrer_name, lkw_fahrer_stunden,
-                arbeit, material, bemerkung
+        try:
+            cur.execute(
+                """
+                INSERT INTO reports (
+                    company_id, datum, wetter,
+                    arbeitszeit_von, arbeitszeit_bis, pause_stunden, netto_stunden,
+                    baustelle, team,
+                    polier_name, polier_stunden,
+                    vorarbeiter_name, vorarbeiter_stunden,
+                    facharbeiter_name, facharbeiter_stunden,
+                    elektriker_name, elektriker_stunden,
+                    helfer_name, helfer_stunden,
+                    lkw_fahrer_name, lkw_fahrer_stunden,
+                    arbeit, material, bemerkung
+                )
+                VALUES (
+                    %s, %s, %s,
+                    %s, %s, %s, %s,
+                    %s, %s,
+                    %s, %s,
+                    %s, %s,
+                    %s, %s,
+                    %s, %s,
+                    %s, %s,
+                    %s, %s,
+                    %s, %s, %s
+                )
+                """,
+                (
+                    company_id,
+                    datum,
+                    wetter,
+                    arbeitszeit_von,
+                    arbeitszeit_bis,
+                    pause_stunden,
+                    netto_stunden,
+                    baustelle,
+                    team,
+                    polier_name,
+                    polier_stunden,
+                    vorarbeiter_name,
+                    vorarbeiter_stunden,
+                    facharbeiter_name,
+                    facharbeiter_stunden,
+                    elektriker_name,
+                    elektriker_stunden,
+                    helfer_name,
+                    helfer_stunden,
+                    lkw_fahrer_name,
+                    lkw_fahrer_stunden,
+                    arbeit,
+                    material,
+                    bemerkung,
+                ),
             )
-            VALUES (
-                %s, %s, %s,
-                %s, %s, %s, %s,
-                %s, %s,
-                %s, %s,
-                %s, %s,
-                %s, %s,
-                %s, %s,
-                %s, %s,
-                %s, %s,
-                %s, %s, %s
-            )
-            """,
-            (
-                company_id,
-                datum,
-                wetter,
-                arbeitszeit_von,
-                arbeitszeit_bis,
-                pause_stunden,
-                netto_stunden,
-                baustelle,
-                team,
-                polier_name,
-                polier_stunden,
-                vorarbeiter_name,
-                vorarbeiter_stunden,
-                facharbeiter_name,
-                facharbeiter_stunden,
-                elektriker_name,
-                elektriker_stunden,
-                helfer_name,
-                helfer_stunden,
-                lkw_fahrer_name,
-                lkw_fahrer_stunden,
-                arbeit,
-                material,
-                bemerkung,
-            ),
-        )
-        conn.commit()
-        cur.close()
-        conn.close()
+            conn.commit()
+            flash("Bericht gespeichert.", "success")
+        except Exception as e:
+            conn.rollback()
+            flash(f"Fehler: {str(e)}", "error")
+        finally:
+            cur.close()
+            conn.close()
 
-        flash("Bericht gespeichert.", "success")
         return redirect(url_for("index"))
 
     conn = get_db()
@@ -616,7 +552,7 @@ def users_list():
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT id, name, company_id, created_at
+        SELECT id, name, role, company_id, created_at
         FROM users
         WHERE company_id = %s
         ORDER BY id DESC
@@ -650,12 +586,15 @@ def users_add():
         try:
             cur.execute(
                 """
-                INSERT INTO users (name, pin, company_id)
-                VALUES (%s, %s, %s)
+                INSERT INTO users (id, name, pin, role, company_id)
+                VALUES (
+                    (SELECT COALESCE(MAX(id), 0) + 1 FROM users),
+                    %s, %s, %s, %s
+                )
                 ON CONFLICT (company_id, name) DO UPDATE
                 SET pin = EXCLUDED.pin
                 """,
-                (name, pin, company_id),
+                (name, pin, "worker", company_id),
             )
             conn.commit()
             flash("Benutzer gespeichert.", "success")
