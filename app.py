@@ -1,13 +1,22 @@
-
 import os
+from io import BytesIO
+from datetime import date
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from flask import Flask, render_template, request, redirect, url_for, flash, session
-from io import BytesIO
-from flask import send_file
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    session,
+    send_file,
+)
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
+
 
 # -------------------------------------------------
 # App setup
@@ -45,12 +54,26 @@ def users_has_pin(cur) -> bool:
     return cur.fetchone() is not None
 
 
+def add_column_if_missing(cur, table_name: str, column_name: str, column_def: str):
+    cur.execute(
+        """
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema='public' AND table_name=%s AND column_name=%s
+        """,
+        (table_name, column_name),
+    )
+    exists = cur.fetchone() is not None
+    if not exists:
+        cur.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_def};")
+
+
 def init_db():
     conn = get_db()
     cur = conn.cursor()
 
     # -------------------------------------------------
-    # 1) Optional full reset (ONLY when RESET_DB == "1")
+    # 1) Optional full reset
     # -------------------------------------------------
     if os.environ.get("RESET_DB") == "1":
         cur.execute("DROP TABLE IF EXISTS reports CASCADE;")
@@ -59,39 +82,38 @@ def init_db():
         conn.commit()
 
     # -------------------------------------------------
-    # 2) Ensure companies exists (needed for FK)
+    # 2) Companies
     # -------------------------------------------------
-    cur.execute("""
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS companies (
             id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
             contact_email TEXT,
             created_at TIMESTAMP DEFAULT NOW()
         );
-    """)
+        """
+    )
 
     # -------------------------------------------------
-    # 3) If users exists but is old (no pin), self-heal by dropping users+reports
+    # 3) Users
     # -------------------------------------------------
-    cur.execute("""
+    cur.execute(
+        """
         SELECT 1
         FROM information_schema.tables
         WHERE table_schema='public' AND table_name='users'
-    """)
+        """
+    )
     users_exists = cur.fetchone() is not None
 
     if users_exists and not users_has_pin(cur):
-        # old schema -> drop and rebuild (prevents crash)
         cur.execute("DROP TABLE IF EXISTS reports CASCADE;")
         cur.execute("DROP TABLE IF EXISTS users CASCADE;")
         conn.commit()
-        users_exists = False  # will be recreated below
 
-    # -------------------------------------------------
-    # 4) Create users WITHOUT global unique(name)
-    #    then add UNIQUE(company_id, name)
-    # -------------------------------------------------
-    cur.execute("""
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
@@ -99,10 +121,14 @@ def init_db():
             company_id INTEGER NOT NULL REFERENCES companies(id),
             created_at TIMESTAMP DEFAULT NOW()
         );
-    """)
+        """
+    )
 
-    # Reports
-    cur.execute("""
+    # -------------------------------------------------
+    # 4) Reports base table
+    # -------------------------------------------------
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS reports (
             id SERIAL PRIMARY KEY,
             company_id INTEGER NOT NULL REFERENCES companies(id),
@@ -113,25 +139,52 @@ def init_db():
             bemerkung TEXT,
             created_at TIMESTAMP DEFAULT NOW()
         );
-    """)
+        """
+    )
 
     # -------------------------------------------------
-    # 5) Migration: remove old UNIQUE(name) if present, then enforce UNIQUE(company_id, name)
+    # 5) Reports extra columns used in templates
+    # -------------------------------------------------
+    add_column_if_missing(cur, "reports", "wetter", "TEXT")
+    add_column_if_missing(cur, "reports", "arbeitszeit_von", "TEXT")
+    add_column_if_missing(cur, "reports", "arbeitszeit_bis", "TEXT")
+    add_column_if_missing(cur, "reports", "pause_stunden", "NUMERIC")
+    add_column_if_missing(cur, "reports", "netto_stunden", "NUMERIC")
+    add_column_if_missing(cur, "reports", "team", "TEXT")
+
+    add_column_if_missing(cur, "reports", "polier_name", "TEXT")
+    add_column_if_missing(cur, "reports", "polier_stunden", "NUMERIC")
+    add_column_if_missing(cur, "reports", "vorarbeiter_name", "TEXT")
+    add_column_if_missing(cur, "reports", "vorarbeiter_stunden", "NUMERIC")
+    add_column_if_missing(cur, "reports", "facharbeiter_name", "TEXT")
+    add_column_if_missing(cur, "reports", "facharbeiter_stunden", "NUMERIC")
+    add_column_if_missing(cur, "reports", "elektriker_name", "TEXT")
+    add_column_if_missing(cur, "reports", "elektriker_stunden", "NUMERIC")
+    add_column_if_missing(cur, "reports", "helfer_name", "TEXT")
+    add_column_if_missing(cur, "reports", "helfer_stunden", "NUMERIC")
+    add_column_if_missing(cur, "reports", "lkw_fahrer_name", "TEXT")
+    add_column_if_missing(cur, "reports", "lkw_fahrer_stunden", "NUMERIC")
+
+    conn.commit()
+
+    # -------------------------------------------------
+    # 6) Unique constraint users(company_id, name)
     # -------------------------------------------------
     try:
-        # Find and drop any unique constraint that is ONLY on (name)
-        cur.execute("""
+        cur.execute(
+            """
             SELECT c.conname
             FROM pg_constraint c
             JOIN pg_class t ON t.oid = c.conrelid
             WHERE t.relname = 'users'
               AND c.contype = 'u'
-        """)
+            """
+        )
         constraints = [r["conname"] for r in cur.fetchall()]
 
         for conname in constraints:
-            # Check which columns are inside this constraint
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT a.attname
                 FROM pg_attribute a
                 JOIN pg_index i ON i.indrelid = a.attrelid AND a.attnum = ANY(i.indkey)
@@ -139,76 +192,55 @@ def init_db():
                 JOIN pg_class t ON t.oid = c.conrelid
                 WHERE t.relname='users' AND c.conname=%s
                 ORDER BY a.attnum
-            """, (conname,))
+                """,
+                (conname,),
+            )
             cols = [x["attname"] for x in cur.fetchall()]
-
-            # If it's exactly ['name'] -> drop it
             if cols == ["name"]:
                 cur.execute(f'ALTER TABLE users DROP CONSTRAINT "{conname}";')
                 conn.commit()
 
-        # Create the correct unique constraint if not exists
-        cur.execute("""
+        cur.execute(
+            """
             DO $$
             BEGIN
                 IF NOT EXISTS (
-                    SELECT 1 FROM pg_constraint c
+                    SELECT 1
+                    FROM pg_constraint c
                     JOIN pg_class t ON t.oid = c.conrelid
-                    WHERE t.relname='users' AND c.conname='users_company_id_name_key'
+                    WHERE t.relname='users'
+                      AND c.conname='users_company_id_name_key'
                 ) THEN
                     ALTER TABLE users
                     ADD CONSTRAINT users_company_id_name_key UNIQUE (company_id, name);
                 END IF;
             END $$;
-        """)
+            """
+        )
         conn.commit()
 
     except Exception:
-        # If migration fails for any reason, fallback: rebuild users+reports cleanly
         conn.rollback()
-        cur.execute("DROP TABLE IF EXISTS reports CASCADE;")
-        cur.execute("DROP TABLE IF EXISTS users CASCADE;")
-        conn.commit()
-
-        # Recreate clean
-        cur.execute("""
-            CREATE TABLE users (
-                id SERIAL PRIMARY KEY,
-                name TEXT NOT NULL,
-                pin TEXT NOT NULL,
-                company_id INTEGER NOT NULL REFERENCES companies(id),
-                created_at TIMESTAMP DEFAULT NOW(),
-                CONSTRAINT users_company_id_name_key UNIQUE (company_id, name)
-            );
-        """)
-        cur.execute("""
-            CREATE TABLE reports (
-                id SERIAL PRIMARY KEY,
-                company_id INTEGER NOT NULL REFERENCES companies(id),
-                datum TEXT,
-                baustelle TEXT,
-                arbeit TEXT,
-                material TEXT,
-                bemerkung TEXT,
-                created_at TIMESTAMP DEFAULT NOW()
-            );
-        """)
-        conn.commit()
 
     # -------------------------------------------------
-    # 6) Seed demo company and demo user
+    # 7) Seed demo company and demo user
     # -------------------------------------------------
-    cur.execute("""
+    cur.execute(
+        """
         INSERT INTO companies (id, name, contact_email)
         VALUES (1, 'Demo Firma', 'demo@firma.de')
         ON CONFLICT (id) DO NOTHING;
-    """)
+        """
+    )
 
-    cur.execute("""
+    cur.execute(
+        """
         INSERT INTO users (name, pin, company_id)
         VALUES (%s, %s, %s)
         ON CONFLICT (company_id, name) DO NOTHING;
-    """, ("Suad", "1234", 1))
+        """,
+        ("Suad", "1234", 1),
+    )
 
     conn.commit()
     cur.close()
@@ -220,7 +252,7 @@ init_db()
 
 
 # -------------------------------------------------
-# Auth helpers
+# Helpers
 # -------------------------------------------------
 def is_logged_in():
     return "user_id" in session and "company_id" in session
@@ -228,6 +260,30 @@ def is_logged_in():
 
 def current_company_id() -> int:
     return int(session.get("company_id", DEFAULT_COMPANY_ID))
+
+
+def to_float(value, default=0.0):
+    try:
+        if value in (None, ""):
+            return default
+        return float(value)
+    except Exception:
+        return default
+
+
+def calculate_netto_hours(von: str, bis: str, pause_hours: float) -> float:
+    try:
+        if not von or not bis:
+            return 0.0
+        h1, m1 = map(int, von.split(":"))
+        h2, m2 = map(int, bis.split(":"))
+        start = h1 * 60 + m1
+        end = h2 * 60 + m2
+        total = (end - start) / 60.0
+        netto = total - pause_hours
+        return round(max(netto, 0), 2)
+    except Exception:
+        return 0.0
 
 
 # -------------------------------------------------
@@ -253,8 +309,6 @@ def login():
 
         conn = get_db()
         cur = conn.cursor()
-        # NOTE: name+pin can exist in multiple companies, but pin should differ.
-        # We'll log in to the first match. Better UX later: ask for company or show list.
         cur.execute(
             "SELECT id, name, company_id FROM users WHERE name = %s AND pin = %s",
             (name, pin),
@@ -282,7 +336,7 @@ def logout():
 
 
 # -------------------------------------------------
-# Register company + admin (protected)
+# Register company + admin
 # -------------------------------------------------
 @app.route("/register-company", methods=["GET", "POST"])
 def register_company():
@@ -304,7 +358,6 @@ def register_company():
         conn = get_db()
         cur = conn.cursor()
 
-        # Create company
         cur.execute(
             """
             INSERT INTO companies (name, contact_email)
@@ -315,7 +368,6 @@ def register_company():
         )
         company_id = int(cur.fetchone()["id"])
 
-        # Create admin user for that company
         cur.execute(
             """
             INSERT INTO users (name, pin, company_id)
@@ -372,7 +424,30 @@ def index():
 
     if request.method == "POST":
         datum = request.form.get("datum")
+        wetter = request.form.get("wetter")
+        arbeitszeit_von = request.form.get("arbeitszeit_von")
+        arbeitszeit_bis = request.form.get("arbeitszeit_bis")
+        pause_stunden = to_float(request.form.get("pause_stunden"), 0.0)
+        netto_stunden = calculate_netto_hours(
+            arbeitszeit_von, arbeitszeit_bis, pause_stunden
+        )
+
         baustelle = request.form.get("baustelle")
+        team = request.form.get("team")
+
+        polier_name = request.form.get("polier_name")
+        polier_stunden = to_float(request.form.get("polier_stunden"), 0.0)
+        vorarbeiter_name = request.form.get("vorarbeiter_name")
+        vorarbeiter_stunden = to_float(request.form.get("vorarbeiter_stunden"), 0.0)
+        facharbeiter_name = request.form.get("facharbeiter_name")
+        facharbeiter_stunden = to_float(request.form.get("facharbeiter_stunden"), 0.0)
+        elektriker_name = request.form.get("elektriker_name")
+        elektriker_stunden = to_float(request.form.get("elektriker_stunden"), 0.0)
+        helfer_name = request.form.get("helfer_name")
+        helfer_stunden = to_float(request.form.get("helfer_stunden"), 0.0)
+        lkw_fahrer_name = request.form.get("lkw_fahrer_name")
+        lkw_fahrer_stunden = to_float(request.form.get("lkw_fahrer_stunden"), 0.0)
+
         arbeit = request.form.get("arbeit")
         material = request.form.get("material")
         bemerkung = request.form.get("bemerkung")
@@ -381,10 +456,43 @@ def index():
         cur = conn.cursor()
         cur.execute(
             """
-            INSERT INTO reports (company_id, datum, baustelle, arbeit, material, bemerkung)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO reports (
+                company_id, datum, wetter,
+                arbeitszeit_von, arbeitszeit_bis, pause_stunden, netto_stunden,
+                baustelle, team,
+                polier_name, polier_stunden,
+                vorarbeiter_name, vorarbeiter_stunden,
+                facharbeiter_name, facharbeiter_stunden,
+                elektriker_name, elektriker_stunden,
+                helfer_name, helfer_stunden,
+                lkw_fahrer_name, lkw_fahrer_stunden,
+                arbeit, material, bemerkung
+            )
+            VALUES (
+                %s, %s, %s,
+                %s, %s, %s, %s,
+                %s, %s,
+                %s, %s,
+                %s, %s,
+                %s, %s,
+                %s, %s,
+                %s, %s,
+                %s, %s,
+                %s, %s, %s
+            )
             """,
-            (company_id, datum, baustelle, arbeit, material, bemerkung),
+            (
+                company_id, datum, wetter,
+                arbeitszeit_von, arbeitszeit_bis, pause_stunden, netto_stunden,
+                baustelle, team,
+                polier_name, polier_stunden,
+                vorarbeiter_name, vorarbeiter_stunden,
+                facharbeiter_name, facharbeiter_stunden,
+                elektriker_name, elektriker_stunden,
+                helfer_name, helfer_stunden,
+                lkw_fahrer_name, lkw_fahrer_stunden,
+                arbeit, material, bemerkung,
+            ),
         )
         conn.commit()
         cur.close()
@@ -403,7 +511,11 @@ def index():
     cur.close()
     conn.close()
 
-    return render_template("index.html", reports=reports)
+    return render_template(
+        "index.html",
+        reports=reports,
+        heute=date.today().isoformat(),
+    )
 
 
 # -------------------------------------------------
@@ -428,27 +540,10 @@ def list_reports():
 
     return render_template("list.html", reports=reports)
 
+
 # -------------------------------------------------
-# Users (create/list) - for current company
+# Detail
 # -------------------------------------------------
-@app.route("/users")
-def users_list():
-    if not is_logged_in():
-        return redirect(url_for("login"))
-
-    company_id = current_company_id()
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT id, name, company_id, created_at FROM users WHERE company_id=%s ORDER BY id DESC",
-        (company_id,),
-    )
-    users = cur.fetchall()
-    cur.close()
-    conn.close()
-
-    return render_template("users.html", users=users)
 @app.route("/detail/<int:report_id>")
 def detail(report_id):
     if not is_logged_in():
@@ -472,6 +567,34 @@ def detail(report_id):
     return render_template("detail.html", report=report)
 
 
+# -------------------------------------------------
+# Users
+# -------------------------------------------------
+@app.route("/users")
+def users_list():
+    if not is_logged_in():
+        return redirect(url_for("login"))
+
+    company_id = current_company_id()
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id, name, company_id, created_at
+        FROM users
+        WHERE company_id = %s
+        ORDER BY id DESC
+        """,
+        (company_id,),
+    )
+    users = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    return render_template("users.html", users=users)
+
+
 @app.route("/users/add", methods=["GET", "POST"])
 def users_add():
     if not is_logged_in():
@@ -490,12 +613,12 @@ def users_add():
         conn = get_db()
         cur = conn.cursor()
         try:
-            # UNIQUE(company_id, name) => ne moze isto ime 2x u istoj firmi
             cur.execute(
                 """
                 INSERT INTO users (name, pin, company_id)
                 VALUES (%s, %s, %s)
-                ON CONFLICT (company_id, name) DO UPDATE SET pin = EXCLUDED.pin
+                ON CONFLICT (company_id, name) DO UPDATE
+                SET pin = EXCLUDED.pin
                 """,
                 (name, pin, company_id),
             )
@@ -512,6 +635,10 @@ def users_add():
 
     return render_template("users_add.html")
 
+
+# -------------------------------------------------
+# PDF Export
+# -------------------------------------------------
 @app.route("/report/pdf/<int:report_id>")
 def report_pdf(report_id):
     if not is_logged_in():
@@ -543,20 +670,77 @@ def report_pdf(report_id):
     p.setFont("Helvetica-Bold", 16)
     p.drawString(50, y, "Bautagesbericht")
 
-    y -= 40
-    p.setFont("Helvetica", 12)
+    y -= 30
+    p.setFont("Helvetica", 11)
     p.drawString(50, y, f"Datum: {report.get('datum') or ''}")
 
-    y -= 25
+    y -= 20
     p.drawString(50, y, f"Baustelle: {report.get('baustelle') or ''}")
 
+    y -= 20
+    p.drawString(50, y, f"Wetter: {report.get('wetter') or ''}")
+
+    y -= 20
+    p.drawString(
+        50,
+        y,
+        f"Arbeitszeit: {report.get('arbeitszeit_von') or ''} - {report.get('arbeitszeit_bis') or ''}",
+    )
+
+    y -= 20
+    p.drawString(50, y, f"Pause: {report.get('pause_stunden') or 0} h")
+
+    y -= 20
+    p.drawString(50, y, f"Netto: {report.get('netto_stunden') or 0} h")
+
     y -= 25
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(50, y, "Personal")
+
+    y -= 20
+    p.setFont("Helvetica", 11)
+    p.drawString(
+        50, y,
+        f"Polier: {report.get('polier_name') or '-'} ({report.get('polier_stunden') or 0} h)"
+    )
+    y -= 18
+    p.drawString(
+        50, y,
+        f"Vorarbeiter: {report.get('vorarbeiter_name') or '-'} ({report.get('vorarbeiter_stunden') or 0} h)"
+    )
+    y -= 18
+    p.drawString(
+        50, y,
+        f"Facharbeiter: {report.get('facharbeiter_name') or '-'} ({report.get('facharbeiter_stunden') or 0} h)"
+    )
+    y -= 18
+    p.drawString(
+        50, y,
+        f"Elektriker: {report.get('elektriker_name') or '-'} ({report.get('elektriker_stunden') or 0} h)"
+    )
+    y -= 18
+    p.drawString(
+        50, y,
+        f"Helfer: {report.get('helfer_name') or '-'} ({report.get('helfer_stunden') or 0} h)"
+    )
+    y -= 18
+    p.drawString(
+        50, y,
+        f"LKW Fahrer: {report.get('lkw_fahrer_name') or '-'} ({report.get('lkw_fahrer_stunden') or 0} h)"
+    )
+
+    y -= 28
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(50, y, "Taetigkeiten")
+
+    y -= 20
+    p.setFont("Helvetica", 11)
     p.drawString(50, y, f"Arbeit: {report.get('arbeit') or ''}")
 
-    y -= 25
+    y -= 20
     p.drawString(50, y, f"Material: {report.get('material') or ''}")
 
-    y -= 25
+    y -= 20
     p.drawString(50, y, f"Bemerkung: {report.get('bemerkung') or ''}")
 
     p.showPage()
@@ -567,8 +751,11 @@ def report_pdf(report_id):
         buffer,
         as_attachment=True,
         download_name=f"bautagesbericht_{report_id}.pdf",
-        mimetype="application/pdf"
+        mimetype="application/pdf",
     )
+
+
+# -------------------------------------------------
 # Run locally
 # -------------------------------------------------
 if __name__ == "__main__":
