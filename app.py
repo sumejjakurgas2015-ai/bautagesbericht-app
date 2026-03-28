@@ -449,6 +449,27 @@ def users_list():
     conn.close()
 
     return render_template("users.html", users=users)
+@app.route("/detail/<int:report_id>")
+def detail(report_id):
+    if not is_logged_in():
+        return redirect(url_for("login"))
+
+    company_id = current_company_id()
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT * FROM reports WHERE id = %s AND company_id = %s",
+        (report_id, company_id),
+    )
+    report = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not report:
+        return "Bericht nicht gefunden", 404
+
+    return render_template("detail.html", report=report)
 
 
 @app.route("/users/add", methods=["GET", "POST"])
