@@ -1,4 +1,4 @@
-import os
+ import os
 from datetime import date
 from io import BytesIO
 
@@ -624,66 +624,101 @@ def report_pdf(report_id):
     p = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
 
+    # PEJO boje
+    red = (237 / 255, 28 / 255, 36 / 255)
+    dark_grey = (107 / 255, 107 / 255, 107 / 255)
+    light_grey = (242 / 255, 242 / 255, 242 / 255)
+    medium_grey = (217 / 255, 217 / 255, 217 / 255)
+
     # Header
-    p.setFillColorRGB(0.12, 0.24, 0.45)
-    p.rect(0, height - 70, width, 70, fill=1, stroke=0)
+    p.setFillColorRGB(*red)
+    p.rect(0, height - 72, width, 72, fill=1, stroke=0)
+
+    # Logo
+    logo_path = os.path.join(BASE_DIR, "static", "logo-pejo.png")
+    if os.path.exists(logo_path):
+        try:
+            p.drawImage(
+                logo_path,
+                18,
+                height - 64,
+                width=78,
+                height=46,
+                preserveAspectRatio=True,
+                mask="auto",
+            )
+        except Exception:
+            pass
+
     p.setFillColorRGB(1, 1, 1)
     p.setFont("Helvetica-Bold", 20)
-    p.drawString(40, height - 42, "BAUTAGESBERICHT")
+    p.drawString(110, height - 42, "BAUTAGESBERICHT")
+
+    p.setFont("Helvetica", 10)
+    p.drawString(110, height - 60, "Digitaler Tagesbericht")
+
+    # outer border
+    p.setStrokeColorRGB(*medium_grey)
+    p.rect(25, 25, width - 50, height - 122, stroke=1, fill=0)
+
+    y = height - 98
+
+    # Info title
+    p.setFillColorRGB(*dark_grey)
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(40, y, "Allgemeine Angaben")
+    y -= 18
+
+    # Info background
+    p.setFillColorRGB(*light_grey)
+    p.rect(35, y - 58, width - 70, 58, fill=1, stroke=0)
+
+    p.setFillColorRGB(*dark_grey)
+    p.setFont("Helvetica-Bold", 10)
+    p.drawString(45, y - 14, "Datum:")
+    p.drawString(220, y - 14, "Baustelle:")
+    p.drawString(45, y - 38, "Wetter:")
+    p.drawString(220, y - 38, "Arbeitszeit:")
 
     p.setFillColorRGB(0, 0, 0)
-
-    # Outer border
-    p.rect(25, 25, width - 50, height - 120, stroke=1, fill=0)
-
-    y = height - 95
-
-    # Info block
-    p.setFont("Helvetica-Bold", 11)
-    p.drawString(40, y, "Datum:")
-    p.drawString(220, y, "Baustelle:")
-    y -= 16
-
     p.setFont("Helvetica", 10)
-    p.drawString(40, y, str(report.get("datum") or ""))
-    p.drawString(220, y, str(report.get("baustelle") or ""))
-    y -= 24
-
-    p.setFont("Helvetica-Bold", 11)
-    p.drawString(40, y, "Wetter:")
-    p.drawString(220, y, "Arbeitszeit:")
-    y -= 16
-
-    p.setFont("Helvetica", 10)
-    p.drawString(40, y, str(report.get("wetter") or ""))
+    p.drawString(95, y - 14, str(report.get("datum") or ""))
+    p.drawString(295, y - 14, str(report.get("baustelle") or ""))
+    p.drawString(95, y - 38, str(report.get("wetter") or ""))
     p.drawString(
-        220,
-        y,
+        295,
+        y - 38,
         f"{report.get('arbeitszeit_von') or ''} - {report.get('arbeitszeit_bis') or ''}",
     )
-    y -= 16
 
-    p.drawString(40, y, f"Pause: {report.get('pause_stunden') or 0} h")
-    p.drawString(220, y, f"Netto: {report.get('netto_stunden') or 0} h")
-    y -= 20
-
-    p.line(35, y, width - 35, y)
-
-    # Team
-    y -= 24
-    p.setFont("Helvetica-Bold", 13)
-    p.drawString(40, y, "Personal")
-    y -= 20
-
-    p.setFont("Helvetica-Bold", 10)
-    p.drawString(40, y, "Funktion")
-    p.drawString(180, y, "Name")
-    p.drawString(430, y, "Stunden")
-    y -= 8
-    p.line(40, y, width - 40, y)
-    y -= 16
+    y -= 72
 
     p.setFont("Helvetica", 10)
+    p.drawString(45, y, f"Pause: {report.get('pause_stunden') or 0} h")
+    p.drawString(220, y, f"Netto: {report.get('netto_stunden') or 0} h")
+
+    y -= 24
+    p.setStrokeColorRGB(*medium_grey)
+    p.line(35, y, width - 35, y)
+
+    # Personal
+    y -= 24
+    p.setFillColorRGB(*dark_grey)
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(40, y, "Personal")
+    y -= 18
+
+    # table header
+    p.setFillColorRGB(*light_grey)
+    p.rect(35, y - 14, width - 70, 20, fill=1, stroke=0)
+
+    p.setFillColorRGB(*dark_grey)
+    p.setFont("Helvetica-Bold", 10)
+    p.drawString(45, y, "Funktion")
+    p.drawString(180, y, "Name")
+    p.drawString(430, y, "Stunden")
+    y -= 20
+
     workers = [
         ("Polier", report.get("polier_name"), report.get("polier_stunden")),
         ("Vorarbeiter", report.get("vorarbeiter_name"), report.get("vorarbeiter_stunden")),
@@ -693,51 +728,74 @@ def report_pdf(report_id):
         ("LKW Fahrer", report.get("lkw_fahrer_name"), report.get("lkw_fahrer_stunden")),
     ]
 
+    p.setFillColorRGB(0, 0, 0)
+    p.setFont("Helvetica", 10)
+
     for role, name, hours in workers:
-        p.drawString(40, y, str(role))
+        p.drawString(45, y, str(role))
         p.drawString(180, y, str(name or "-"))
         p.drawString(430, y, f"{hours or 0} h")
+        p.setStrokeColorRGB(*medium_grey)
+        p.line(40, y - 6, width - 40, y - 6)
         y -= 18
 
-    p.line(35, y, width - 35, y)
-
-    # Team text
-    y -= 24
+    # Team
+    y -= 12
+    p.setFillColorRGB(*dark_grey)
     p.setFont("Helvetica-Bold", 12)
     p.drawString(40, y, "Team")
     y -= 18
-    p.setFont("Helvetica", 10)
-    p.drawString(40, y, str(report.get("team") or ""))
-    y -= 20
 
-    # Work block
-    p.line(35, y, width - 35, y)
-    y -= 24
-    p.setFont("Helvetica-Bold", 13)
+    p.setFillColorRGB(*light_grey)
+    p.rect(35, y - 16, width - 70, 24, fill=1, stroke=0)
+    p.setFillColorRGB(0, 0, 0)
+    p.setFont("Helvetica", 10)
+    p.drawString(45, y, str(report.get("team") or ""))
+    y -= 34
+
+    # Tätigkeiten
+    p.setFillColorRGB(*dark_grey)
+    p.setFont("Helvetica-Bold", 12)
     p.drawString(40, y, "Taetigkeiten")
     y -= 18
-    p.setFont("Helvetica", 10)
-    p.drawString(40, y, str(report.get("arbeit") or ""))
-    y -= 24
 
-    # Material block
+    p.setFillColorRGB(*light_grey)
+    p.rect(35, y - 40, width - 70, 48, fill=1, stroke=0)
+    p.setFillColorRGB(0, 0, 0)
+    p.setFont("Helvetica", 10)
+    p.drawString(45, y, str(report.get("arbeit") or ""))
+    y -= 58
+
+    # Material
+    p.setFillColorRGB(*dark_grey)
     p.setFont("Helvetica-Bold", 12)
     p.drawString(40, y, "Material")
     y -= 18
-    p.setFont("Helvetica", 10)
-    p.drawString(40, y, str(report.get("material") or ""))
-    y -= 24
 
-    # Bemerkung block
+    p.setFillColorRGB(*light_grey)
+    p.rect(35, y - 24, width - 70, 32, fill=1, stroke=0)
+    p.setFillColorRGB(0, 0, 0)
+    p.setFont("Helvetica", 10)
+    p.drawString(45, y, str(report.get("material") or ""))
+    y -= 42
+
+    # Bemerkung
+    p.setFillColorRGB(*dark_grey)
     p.setFont("Helvetica-Bold", 12)
     p.drawString(40, y, "Bemerkung")
     y -= 18
-    p.setFont("Helvetica", 10)
-    p.drawString(40, y, str(report.get("bemerkung") or ""))
-    y -= 35
 
-    # Signature line
+    p.setFillColorRGB(*light_grey)
+    p.rect(35, y - 32, width - 70, 40, fill=1, stroke=0)
+    p.setFillColorRGB(0, 0, 0)
+    p.setFont("Helvetica", 10)
+    p.drawString(45, y, str(report.get("bemerkung") or ""))
+    y -= 50
+
+    # Signature
+    p.setStrokeColorRGB(*dark_grey)
     p.line(360, 80, width - 50, 80)
+    p.setFillColorRGB(*dark_grey)
     p.setFont("Helvetica", 9)
     p.drawString(395, 65, "Unterschrift")
 
