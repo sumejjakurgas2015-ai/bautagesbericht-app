@@ -624,88 +624,122 @@ def report_pdf(report_id):
     p = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
 
-    y = height - 50
-    p.setFont("Helvetica-Bold", 16)
-    p.drawString(50, y, "Bautagesbericht")
+    # Header
+    p.setFillColorRGB(0.12, 0.24, 0.45)
+    p.rect(0, height - 70, width, 70, fill=1, stroke=0)
+    p.setFillColorRGB(1, 1, 1)
+    p.setFont("Helvetica-Bold", 20)
+    p.drawString(40, height - 42, "BAUTAGESBERICHT")
 
-    y -= 30
-    p.setFont("Helvetica", 11)
-    p.drawString(50, y, f"Datum: {report.get('datum') or ''}")
+    p.setFillColorRGB(0, 0, 0)
 
-    y -= 20
-    p.drawString(50, y, f"Baustelle: {report.get('baustelle') or ''}")
+    # Outer border
+    p.rect(25, 25, width - 50, height - 120, stroke=1, fill=0)
 
-    y -= 20
-    p.drawString(50, y, f"Wetter: {report.get('wetter') or ''}")
+    y = height - 95
 
-    y -= 20
+    # Info block
+    p.setFont("Helvetica-Bold", 11)
+    p.drawString(40, y, "Datum:")
+    p.drawString(220, y, "Baustelle:")
+    y -= 16
+
+    p.setFont("Helvetica", 10)
+    p.drawString(40, y, str(report.get("datum") or ""))
+    p.drawString(220, y, str(report.get("baustelle") or ""))
+    y -= 24
+
+    p.setFont("Helvetica-Bold", 11)
+    p.drawString(40, y, "Wetter:")
+    p.drawString(220, y, "Arbeitszeit:")
+    y -= 16
+
+    p.setFont("Helvetica", 10)
+    p.drawString(40, y, str(report.get("wetter") or ""))
     p.drawString(
-        50,
+        220,
         y,
-        f"Arbeitszeit: {report.get('arbeitszeit_von') or ''} - {report.get('arbeitszeit_bis') or ''}",
+        f"{report.get('arbeitszeit_von') or ''} - {report.get('arbeitszeit_bis') or ''}",
     )
+    y -= 16
 
+    p.drawString(40, y, f"Pause: {report.get('pause_stunden') or 0} h")
+    p.drawString(220, y, f"Netto: {report.get('netto_stunden') or 0} h")
     y -= 20
-    p.drawString(50, y, f"Pause: {report.get('pause_stunden') or 0} h")
 
+    p.line(35, y, width - 35, y)
+
+    # Team
+    y -= 24
+    p.setFont("Helvetica-Bold", 13)
+    p.drawString(40, y, "Personal")
     y -= 20
-    p.drawString(50, y, f"Netto: {report.get('netto_stunden') or 0} h")
 
-    y -= 25
+    p.setFont("Helvetica-Bold", 10)
+    p.drawString(40, y, "Funktion")
+    p.drawString(180, y, "Name")
+    p.drawString(430, y, "Stunden")
+    y -= 8
+    p.line(40, y, width - 40, y)
+    y -= 16
+
+    p.setFont("Helvetica", 10)
+    workers = [
+        ("Polier", report.get("polier_name"), report.get("polier_stunden")),
+        ("Vorarbeiter", report.get("vorarbeiter_name"), report.get("vorarbeiter_stunden")),
+        ("Facharbeiter", report.get("facharbeiter_name"), report.get("facharbeiter_stunden")),
+        ("Elektriker", report.get("elektriker_name"), report.get("elektriker_stunden")),
+        ("Helfer", report.get("helfer_name"), report.get("helfer_stunden")),
+        ("LKW Fahrer", report.get("lkw_fahrer_name"), report.get("lkw_fahrer_stunden")),
+    ]
+
+    for role, name, hours in workers:
+        p.drawString(40, y, str(role))
+        p.drawString(180, y, str(name or "-"))
+        p.drawString(430, y, f"{hours or 0} h")
+        y -= 18
+
+    p.line(35, y, width - 35, y)
+
+    # Team text
+    y -= 24
     p.setFont("Helvetica-Bold", 12)
-    p.drawString(50, y, "Personal")
-
+    p.drawString(40, y, "Team")
+    y -= 18
+    p.setFont("Helvetica", 10)
+    p.drawString(40, y, str(report.get("team") or ""))
     y -= 20
-    p.setFont("Helvetica", 11)
-    p.drawString(
-        50,
-        y,
-        f"Polier: {report.get('polier_name') or '-'} ({report.get('polier_stunden') or 0} h)",
-    )
-    y -= 18
-    p.drawString(
-        50,
-        y,
-        f"Vorarbeiter: {report.get('vorarbeiter_name') or '-'} ({report.get('vorarbeiter_stunden') or 0} h)",
-    )
-    y -= 18
-    p.drawString(
-        50,
-        y,
-        f"Facharbeiter: {report.get('facharbeiter_name') or '-'} ({report.get('facharbeiter_stunden') or 0} h)",
-    )
-    y -= 18
-    p.drawString(
-        50,
-        y,
-        f"Elektriker: {report.get('elektriker_name') or '-'} ({report.get('elektriker_stunden') or 0} h)",
-    )
-    y -= 18
-    p.drawString(
-        50,
-        y,
-        f"Helfer: {report.get('helfer_name') or '-'} ({report.get('helfer_stunden') or 0} h)",
-    )
-    y -= 18
-    p.drawString(
-        50,
-        y,
-        f"LKW Fahrer: {report.get('lkw_fahrer_name') or '-'} ({report.get('lkw_fahrer_stunden') or 0} h)",
-    )
 
-    y -= 28
+    # Work block
+    p.line(35, y, width - 35, y)
+    y -= 24
+    p.setFont("Helvetica-Bold", 13)
+    p.drawString(40, y, "Taetigkeiten")
+    y -= 18
+    p.setFont("Helvetica", 10)
+    p.drawString(40, y, str(report.get("arbeit") or ""))
+    y -= 24
+
+    # Material block
     p.setFont("Helvetica-Bold", 12)
-    p.drawString(50, y, "Taetigkeiten")
+    p.drawString(40, y, "Material")
+    y -= 18
+    p.setFont("Helvetica", 10)
+    p.drawString(40, y, str(report.get("material") or ""))
+    y -= 24
 
-    y -= 20
-    p.setFont("Helvetica", 11)
-    p.drawString(50, y, f"Arbeit: {report.get('arbeit') or ''}")
+    # Bemerkung block
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(40, y, "Bemerkung")
+    y -= 18
+    p.setFont("Helvetica", 10)
+    p.drawString(40, y, str(report.get("bemerkung") or ""))
+    y -= 35
 
-    y -= 20
-    p.drawString(50, y, f"Material: {report.get('material') or ''}")
-
-    y -= 20
-    p.drawString(50, y, f"Bemerkung: {report.get('bemerkung') or ''}")
+    # Signature line
+    p.line(360, 80, width - 50, 80)
+    p.setFont("Helvetica", 9)
+    p.drawString(395, 65, "Unterschrift")
 
     p.showPage()
     p.save()
