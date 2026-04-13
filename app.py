@@ -52,6 +52,38 @@ def add_column_if_missing(cur, table_name, column_name, column_def):
         cur.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_def}")
 
 
+def reset_sequences(cur):
+    cur.execute(
+        """
+        SELECT setval(
+            pg_get_serial_sequence('companies', 'id'),
+            COALESCE((SELECT MAX(id) FROM companies), 1),
+            true
+        );
+        """
+    )
+
+    cur.execute(
+        """
+        SELECT setval(
+            pg_get_serial_sequence('users', 'id'),
+            COALESCE((SELECT MAX(id) FROM users), 1),
+            true
+        );
+        """
+    )
+
+    cur.execute(
+        """
+        SELECT setval(
+            pg_get_serial_sequence('reports', 'id'),
+            COALESCE((SELECT MAX(id) FROM reports), 1),
+            true
+        );
+        """
+    )
+
+
 def init_db():
     conn = get_db()
     cur = conn.cursor()
@@ -152,6 +184,8 @@ def init_db():
     add_column_if_missing(cur, "reports", "material", "TEXT")
     add_column_if_missing(cur, "reports", "bemerkung", "TEXT")
 
+    reset_sequences(cur)
+
     conn.commit()
     cur.close()
     conn.close()
@@ -212,6 +246,8 @@ def register():
         cur = conn.cursor()
 
         try:
+            reset_sequences(cur)
+
             cur.execute(
                 "SELECT id FROM companies WHERE LOWER(name) = LOWER(%s) LIMIT 1",
                 (company,),
@@ -537,6 +573,7 @@ def users_add():
         cur = conn.cursor()
 
         try:
+            reset_sequences(cur)
             cur.execute(
                 """
                 INSERT INTO users (name, pin, role, company_id)
