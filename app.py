@@ -135,6 +135,12 @@ def init_db():
         """
     )
 
+    # ako stara baza nema role kolonu
+    add_column_if_missing(cur, "users", "role", "TEXT DEFAULT 'worker'")
+
+    # svim starim korisnicima bez role postavi worker
+    cur.execute("UPDATE users SET role = 'worker' WHERE role IS NULL")
+
     cur.execute(
         """
         DO $$
