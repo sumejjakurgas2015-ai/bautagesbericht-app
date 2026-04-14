@@ -685,12 +685,12 @@ def detail(report_id):
 def users_list():
     if not is_logged_in():
         return redirect(url_for("login"))
-
     try:
         company_id = current_company_id()
 
         conn = get_db()
         cur = conn.cursor()
+     
         cur.execute(
             """
             SELECT id, name, role, company_id, created_at
