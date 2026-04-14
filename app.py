@@ -135,10 +135,7 @@ def init_db():
         """
     )
 
-    # ako stara baza nema role kolonu
     add_column_if_missing(cur, "users", "role", "TEXT DEFAULT 'worker'")
-
-    # svim starim korisnicima bez role postavi worker
     cur.execute("UPDATE users SET role = 'worker' WHERE role IS NULL")
 
     cur.execute(
@@ -689,24 +686,28 @@ def users_list():
     if not is_logged_in():
         return redirect(url_for("login"))
 
-    company_id = current_company_id()
+    try:
+        company_id = current_company_id()
 
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT id, name, role, company_id, created_at
-        FROM users
-        WHERE company_id = %s
-        ORDER BY id DESC
-        """,
-        (company_id,),
-    )
-    users = cur.fetchall()
-    cur.close()
-    conn.close()
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id, name, role, company_id, created_at
+            FROM users
+            WHERE company_id = %s
+            ORDER BY id DESC
+            """,
+            (company_id,),
+        )
+        users = cur.fetchall()
+        cur.close()
+        conn.close()
 
-    return render_template("users.html", users=users)
+        return render_template("users.html", users=users)
+
+    except Exception as e:
+        return f"USERS ERROR: {str(e)}", 500
 
 
 @app.route("/users/add", methods=["GET", "POST"])
@@ -714,47 +715,51 @@ def users_add():
     if not is_logged_in():
         return redirect(url_for("login"))
 
-    company_id = current_company_id()
+    try:
+        company_id = current_company_id()
 
-    if request.method == "POST":
-        name = (request.form.get("name") or "").strip()
-        pin = (request.form.get("pin") or "").strip()
-        role = (request.form.get("role") or "worker").strip().lower()
+        if request.method == "POST":
+            name = (request.form.get("name") or "").strip()
+            pin = (request.form.get("pin") or "").strip()
+            role = (request.form.get("role") or "worker").strip().lower()
 
-        if role not in ("worker", "admin"):
-            role = "worker"
+            if role not in ("worker", "admin"):
+                role = "worker"
 
-        if not name or not pin:
-            flash("Bitte Name und PIN eingeben.", "error")
-            return redirect(url_for("users_add"))
+            if not name or not pin:
+                flash("Bitte Name und PIN eingeben.", "error")
+                return redirect(url_for("users_add"))
 
-        conn = get_db()
-        cur = conn.cursor()
+            conn = get_db()
+            cur = conn.cursor()
 
-        try:
-            reset_sequences(cur)
-            cur.execute(
-                """
-                INSERT INTO users (name, pin, role, company_id)
-                VALUES (%s, %s, %s, %s)
-                ON CONFLICT (company_id, name) DO UPDATE
-                SET pin = EXCLUDED.pin,
-                    role = EXCLUDED.role
-                """,
-                (name, pin, role, company_id),
-            )
-            conn.commit()
-            flash("Benutzer gespeichert.", "success")
-        except Exception as e:
-            conn.rollback()
-            flash(f"Fehler: {str(e)}", "error")
-        finally:
-            cur.close()
-            conn.close()
+            try:
+                reset_sequences(cur)
+                cur.execute(
+                    """
+                    INSERT INTO users (name, pin, role, company_id)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (company_id, name) DO UPDATE
+                    SET pin = EXCLUDED.pin,
+                        role = EXCLUDED.role
+                    """,
+                    (name, pin, role, company_id),
+                )
+                conn.commit()
+                flash("Benutzer gespeichert.", "success")
+            except Exception as e:
+                conn.rollback()
+                return f"USERS ADD POST ERROR: {str(e)}", 500
+            finally:
+                cur.close()
+                conn.close()
 
-        return redirect(url_for("users_list"))
+            return redirect(url_for("users_list"))
 
-    return render_template("users_add.html")
+        return render_template("users_add.html")
+
+    except Exception as e:
+        return f"USERS ADD ERROR: {str(e)}", 500
 
 
 # -------------------------------------------------
