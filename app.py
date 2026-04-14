@@ -20,6 +20,10 @@ from reportlab.pdfgen import canvas
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+@app.route("/test-static")
+def test_static():
+    return app.send_static_file("icon-192.png")
+
 app = Flask(
     __name__,
     template_folder=os.path.join(BASE_DIR, "templates"),
