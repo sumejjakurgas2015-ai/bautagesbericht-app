@@ -157,6 +157,8 @@ def init_db():
             arbeit TEXT,
             material TEXT,
             bemerkung TEXT,
+            bauleiter TEXT,
+            ersteller TEXT,
             created_at TIMESTAMP DEFAULT NOW()
         )
         """
@@ -433,6 +435,8 @@ def index():
         arbeit = request.form.get("arbeit")
         material = request.form.get("material")
         bemerkung = request.form.get("bemerkung")
+        bauleiter = request.form.get("bauleiter")
+        ersteller = request.form.get("ersteller")
 
         conn = get_db()
         cur = conn.cursor()
@@ -450,7 +454,8 @@ def index():
                     elektriker_name, elektriker_stunden,
                     helfer_name, helfer_stunden,
                     lkw_fahrer_name, lkw_fahrer_stunden,
-                    arbeit, material, bemerkung
+                    arbeit, material, bemerkung,
+                    bauleiter, ersteller
                 )
                 VALUES (
                     %s, %s, %s,
@@ -462,7 +467,8 @@ def index():
                     %s, %s,
                     %s, %s,
                     %s, %s,
-                    %s, %s, %s
+                    %s, %s, %s,
+                    %s, %s
                 )
                 RETURNING id
                 """,
@@ -491,6 +497,8 @@ def index():
                     arbeit,
                     material,
                     bemerkung,
+                    bauleiter,
+                    ersteller,
                 ),
             )
             saved_report = cur.fetchone()
@@ -688,7 +696,7 @@ def report_pdf(report_id):
     y -= 18
 
     p.setFillColorRGB(*light_grey)
-    p.rect(35, y - 58, width - 70, 58, fill=1, stroke=0)
+    p.rect(35, y - 78, width - 70, 78, fill=1, stroke=0)
 
     p.setFillColorRGB(*dark_grey)
     p.setFont("Helvetica-Bold", 10)
@@ -696,6 +704,7 @@ def report_pdf(report_id):
     p.drawString(220, y - 14, "Baustelle:")
     p.drawString(45, y - 38, "Wetter:")
     p.drawString(220, y - 38, "Arbeitszeit:")
+    p.drawString(45, y - 62, "Bauleiter:")
 
     p.setFillColorRGB(0, 0, 0)
     p.setFont("Helvetica", 10)
@@ -707,8 +716,9 @@ def report_pdf(report_id):
         y - 38,
         f"{report.get('arbeitszeit_von') or ''} - {report.get('arbeitszeit_bis') or ''}",
     )
+    p.drawString(115, y - 62, str(report.get("bauleiter") or ""))
 
-    y -= 72
+    y -= 92
 
     p.setFont("Helvetica", 10)
     p.drawString(45, y, f"Pause: {report.get('pause_stunden') or 0} h")
@@ -804,10 +814,10 @@ def report_pdf(report_id):
     y -= 50
 
     p.setStrokeColorRGB(*dark_grey)
-    p.line(360, 80, width - 50, 80)
+    p.line(300, 80, width - 50, 80)
     p.setFillColorRGB(*dark_grey)
     p.setFont("Helvetica", 9)
-    p.drawString(395, 65, "Unterschrift")
+    p.drawString(300, 65, f"Erstellt von: {report.get('ersteller') or ''}")
 
     p.showPage()
     p.save()
