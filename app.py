@@ -274,10 +274,11 @@ def get_reports_for_user(company_id, user_id, limit=None):
     if limit:
         cur.execute(
             """
-            SELECT *
-            FROM reports
-            WHERE company_id = %s AND user_id = %s
-            ORDER BY created_at DESC, id DESC
+            SELECT r.*, u.name AS report_user_name
+            FROM reports r
+            LEFT JOIN users u ON r.user_id = u.id
+            WHERE r.company_id = %s AND r.user_id = %s
+            ORDER BY r.created_at DESC, r.id DESC
             LIMIT %s
             """,
             (company_id, user_id, limit),
@@ -285,10 +286,11 @@ def get_reports_for_user(company_id, user_id, limit=None):
     else:
         cur.execute(
             """
-            SELECT *
-            FROM reports
-            WHERE company_id = %s AND user_id = %s
-            ORDER BY created_at DESC, id DESC
+            SELECT r.*, u.name AS report_user_name
+            FROM reports r
+            LEFT JOIN users u ON r.user_id = u.id
+            WHERE r.company_id = %s AND r.user_id = %s
+            ORDER BY r.created_at DESC, r.id DESC
             """,
             (company_id, user_id),
         )
@@ -462,7 +464,7 @@ def login():
                 session["user_id"] = int(user["id"])
                 session["name"] = user["name"]
                 session["company_id"] = int(user["company_id"])
-                session["role"] = user["role"]
+                session["role"] = user["role"] or "worker"
                 return redirect(url_for("index"))
 
             flash("Falsche Firma, falscher Name oder PIN.", "error")
@@ -711,6 +713,10 @@ def users_add():
     if request.method == "POST":
         name = (request.form.get("name") or "").strip()
         pin = (request.form.get("pin") or "").strip()
+        role = (request.form.get("role") or "worker").strip().lower()
+
+        if role not in ("worker", "admin"):
+            role = "worker"
 
         if not name or not pin:
             flash("Bitte Name und PIN eingeben.", "error")
@@ -726,9 +732,10 @@ def users_add():
                 INSERT INTO users (name, pin, role, company_id)
                 VALUES (%s, %s, %s, %s)
                 ON CONFLICT (company_id, name) DO UPDATE
-                SET pin = EXCLUDED.pin
+                SET pin = EXCLUDED.pin,
+                    role = EXCLUDED.role
                 """,
-                (name, pin, "worker", company_id),
+                (name, pin, role, company_id),
             )
             conn.commit()
             flash("Benutzer gespeichert.", "success")
