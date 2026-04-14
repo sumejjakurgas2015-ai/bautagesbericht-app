@@ -1,14 +1,23 @@
 <!doctype html>
 <html lang="de">
 <head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+  <title>Bautagesbericht</title>
+
   <link rel="manifest" href="/static/manifest.json">
   <link rel="icon" href="/static/icon-192.png">
   <link rel="apple-touch-icon" href="/static/icon-512.png">
+
   <meta name="theme-color" content="#0f172a">
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Bautagesbericht</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BauApp">
+
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
   <style>
     :root{
       --bg:#0b1220;
@@ -21,8 +30,11 @@
       --shadow: 0 12px 30px rgba(0,0,0,.35);
       --radius: 18px;
     }
-    body{
+
+    html, body{
       margin:0;
+      padding:0;
+      min-height:100%;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       background:
         radial-gradient(1200px 600px at 10% 0%, rgba(22,165,96,.18), transparent 60%),
@@ -30,16 +42,33 @@
         var(--bg);
       color:var(--text);
     }
-    .wrap{ max-width: 960px; margin: 22px auto; padding: 0 16px; }
+
+    body{
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+
+    .wrap{
+      max-width: 960px;
+      margin: 22px auto;
+      padding: 0 16px;
+    }
+
     .topbar{
-      display:flex; align-items:center; justify-content:space-between;
-      gap:12px; padding:14px 16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:14px 16px;
       border:1px solid var(--border);
       border-radius: var(--radius);
       background: rgba(15,27,51,.65);
       box-shadow: var(--shadow);
       backdrop-filter: blur(8px);
     }
+
     .brand{
       font-weight:900;
       letter-spacing:.2px;
@@ -47,8 +76,15 @@
       align-items:center;
       gap:10px;
     }
-    a{ color: var(--accent); text-decoration:none; }
-    h2{ margin: 14px 0 0 0; }
+
+    a{
+      color: var(--accent);
+      text-decoration:none;
+    }
+
+    h2{
+      margin: 14px 0 0 0;
+    }
 
     .flash{
       margin-top: 12px;
@@ -57,16 +93,25 @@
       border: 1px solid var(--border);
       background: rgba(255,255,255,.06);
     }
-    .flash.success{ border-color: rgba(34,197,94,.35); }
-    .flash.error{ border-color: rgba(239,68,68,.35); }
 
-    .content{ margin-top: 12px; }
+    .flash.success{
+      border-color: rgba(34,197,94,.35);
+    }
+
+    .flash.error{
+      border-color: rgba(239,68,68,.35);
+    }
+
+    .content{
+      margin-top: 12px;
+    }
 
     .nav-links{
       display:flex;
       align-items:center;
       gap:14px;
       font-size:14px;
+      flex-wrap:wrap;
     }
 
     .btn-logout{
@@ -76,9 +121,76 @@
       font-weight:600;
       color:white !important;
     }
+
+    /* Splash screen */
+    #app-splash{
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      background:
+        radial-gradient(900px 500px at 15% 10%, rgba(22,165,96,.16), transparent 60%),
+        radial-gradient(800px 500px at 85% 15%, rgba(79,124,255,.18), transparent 55%),
+        #0b1220;
+      transition: opacity .35s ease, visibility .35s ease;
+    }
+
+    #app-splash.hide{
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .splash-logo{
+      width: 110px;
+      height: 110px;
+      object-fit: contain;
+      border-radius: 22px;
+      box-shadow: 0 12px 30px rgba(0,0,0,.35);
+      margin-bottom: 14px;
+      background: rgba(255,255,255,.04);
+      padding: 12px;
+    }
+
+    .splash-title{
+      font-size: 22px;
+      font-weight: 800;
+      color: #e9efff;
+      letter-spacing: .3px;
+    }
+
+    .splash-subtitle{
+      margin-top: 6px;
+      font-size: 13px;
+      color: #9fb0d0;
+    }
+
+    @media (max-width: 700px){
+      .topbar{
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .nav-links{
+        width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
+  <div id="app-splash">
+    <img
+      src="{{ url_for('static', filename='logo.png') }}"
+      alt="Bautagesbericht Logo"
+      class="splash-logo"
+    >
+    <div class="splash-title">Bautagesbericht</div>
+    <div class="splash-subtitle">Digitaler Tagesbericht</div>
+  </div>
+
   <div class="wrap">
     <div class="topbar">
       <div class="brand">
@@ -114,6 +226,15 @@
       {% block content %}{% endblock %}
     </div>
   </div>
+
+  <script>
+    window.addEventListener("load", function () {
+      const splash = document.getElementById("app-splash");
+      setTimeout(function () {
+        splash.classList.add("hide");
+      }, 700);
+    });
+  </script>
 
   <script src="/static/notifications.js"></script>
 </body>
