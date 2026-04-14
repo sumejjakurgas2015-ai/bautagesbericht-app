@@ -231,6 +231,10 @@ def is_logged_in():
     return "user_id" in session and "company_id" in session
 
 
+def is_admin():
+    return session.get("role") == "admin"
+
+
 def current_company_id():
     return int(session.get("company_id", DEFAULT_COMPANY_ID))
 
@@ -295,6 +299,40 @@ def get_reports_for_user(company_id, user_id, limit=None):
     return reports
 
 
+def get_reports_for_company(company_id, limit=None):
+    conn = get_db()
+    cur = conn.cursor()
+
+    if limit:
+        cur.execute(
+            """
+            SELECT r.*, u.name AS report_user_name
+            FROM reports r
+            LEFT JOIN users u ON r.user_id = u.id
+            WHERE r.company_id = %s
+            ORDER BY r.created_at DESC, r.id DESC
+            LIMIT %s
+            """,
+            (company_id, limit),
+        )
+    else:
+        cur.execute(
+            """
+            SELECT r.*, u.name AS report_user_name
+            FROM reports r
+            LEFT JOIN users u ON r.user_id = u.id
+            WHERE r.company_id = %s
+            ORDER BY r.created_at DESC, r.id DESC
+            """,
+            (company_id,),
+        )
+
+    reports = cur.fetchall()
+    cur.close()
+    conn.close()
+    return reports
+
+
 # -------------------------------------------------
 # BASIC ROUTES
 # -------------------------------------------------
@@ -308,6 +346,7 @@ def inject_user():
     return dict(
         user_id=session.get("user_id"),
         user_name=session.get("name"),
+        user_role=session.get("role"),
     )
 
 
@@ -361,7 +400,7 @@ def register():
                 """
                 INSERT INTO users (name, pin, role, company_id)
                 VALUES (%s, %s, %s, %s)
-                RETURNING id
+                RETURNING id, role
                 """,
                 (name, pin, "admin", company_id),
             )
@@ -374,6 +413,7 @@ def register():
             session["user_id"] = user_id
             session["name"] = name
             session["company_id"] = company_id
+            session["role"] = user_row["role"]
 
             flash("Firma und Admin wurden erfolgreich erstellt.", "success")
             return redirect(url_for("index"))
@@ -405,7 +445,7 @@ def login():
         try:
             cur.execute(
                 """
-                SELECT u.id, u.name, u.company_id
+                SELECT u.id, u.name, u.company_id, u.role
                 FROM users u
                 JOIN companies c ON u.company_id = c.id
                 WHERE LOWER(c.name) = LOWER(%s)
@@ -422,6 +462,7 @@ def login():
                 session["user_id"] = int(user["id"])
                 session["name"] = user["name"]
                 session["company_id"] = int(user["company_id"])
+                session["role"] = user["role"]
                 return redirect(url_for("index"))
 
             flash("Falsche Firma, falscher Name oder PIN.", "error")
@@ -562,7 +603,10 @@ def index():
 
         return redirect(url_for("list_reports"))
 
-    reports = get_reports_for_user(company_id, user_id, limit=30)
+    if is_admin():
+        reports = get_reports_for_company(company_id, limit=30)
+    else:
+        reports = get_reports_for_user(company_id, user_id, limit=30)
 
     return render_template(
         "index.html",
@@ -578,7 +622,11 @@ def list_reports():
 
     company_id = current_company_id()
     user_id = current_user_id()
-    reports = get_reports_for_user(company_id, user_id)
+
+    if is_admin():
+        reports = get_reports_for_company(company_id)
+    else:
+        reports = get_reports_for_user(company_id, user_id)
 
     return render_template("list.html", reports=reports)
 
@@ -593,14 +641,28 @@ def detail(report_id):
 
     conn = get_db()
     cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT *
-        FROM reports
-        WHERE id = %s AND company_id = %s AND user_id = %s
-        """,
-        (report_id, company_id, user_id),
-    )
+
+    if is_admin():
+        cur.execute(
+            """
+            SELECT r.*, u.name AS report_user_name
+            FROM reports r
+            LEFT JOIN users u ON r.user_id = u.id
+            WHERE r.id = %s AND r.company_id = %s
+            """,
+            (report_id, company_id),
+        )
+    else:
+        cur.execute(
+            """
+            SELECT r.*, u.name AS report_user_name
+            FROM reports r
+            LEFT JOIN users u ON r.user_id = u.id
+            WHERE r.id = %s AND r.company_id = %s AND r.user_id = %s
+            """,
+            (report_id, company_id, user_id),
+        )
+
     report = cur.fetchone()
     cur.close()
     conn.close()
@@ -695,14 +757,28 @@ def report_pdf(report_id):
 
     conn = get_db()
     cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT *
-        FROM reports
-        WHERE id = %s AND company_id = %s AND user_id = %s
-        """,
-        (report_id, company_id, user_id),
-    )
+
+    if is_admin():
+        cur.execute(
+            """
+            SELECT r.*, u.name AS report_user_name
+            FROM reports r
+            LEFT JOIN users u ON r.user_id = u.id
+            WHERE r.id = %s AND r.company_id = %s
+            """,
+            (report_id, company_id),
+        )
+    else:
+        cur.execute(
+            """
+            SELECT r.*, u.name AS report_user_name
+            FROM reports r
+            LEFT JOIN users u ON r.user_id = u.id
+            WHERE r.id = %s AND r.company_id = %s AND r.user_id = %s
+            """,
+            (report_id, company_id, user_id),
+        )
+
     report = cur.fetchone()
     cur.close()
     conn.close()
