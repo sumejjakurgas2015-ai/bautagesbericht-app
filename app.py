@@ -20,25 +20,40 @@ from reportlab.pdfgen import canvas
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-
 app = Flask(
     __name__,
     template_folder=os.path.join(BASE_DIR, "templates"),
     static_folder=os.path.join(BASE_DIR, "static"),
 )
 
-@app.route("/radi-li")
-def radi_li():
-    return "RADI"
-
-@app.route("/test-static")
-def test_static():
-    return app.send_static_file("icon-192.png")
-
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
 DEFAULT_COMPANY_ID = int(os.environ.get("COMPANY_ID", "1"))
 
 
+# -------------------------------------------------
+# TEST ROUTES
+# -------------------------------------------------
+@app.route("/radi-li")
+def radi_li():
+    return "RADI", 200
+
+
+@app.route("/test-static")
+def test_static():
+    return send_file(os.path.join(BASE_DIR, "static", "icon-192.png"))
+
+
+@app.route("/manifest")
+def manifest_test():
+    return send_file(
+        os.path.join(BASE_DIR, "static", "manifest.json"),
+        mimetype="application/manifest+json",
+    )
+
+
+# -------------------------------------------------
+# DATABASE
+# -------------------------------------------------
 def get_db():
     db_url = os.environ.get("DATABASE_URL")
     if not db_url:
@@ -207,6 +222,9 @@ def init_db():
 init_db()
 
 
+# -------------------------------------------------
+# HELPERS
+# -------------------------------------------------
 def is_logged_in():
     return "user_id" in session and "company_id" in session
 
@@ -271,11 +289,30 @@ def get_reports_for_company(company_id, limit=None):
     return reports
 
 
+# -------------------------------------------------
+# BASIC ROUTES
+# -------------------------------------------------
 @app.route("/health")
 def health():
     return "OK", 200
 
 
+@app.context_processor
+def inject_user():
+    return dict(
+        user_id=session.get("user_id"),
+        user_name=session.get("name"),
+    )
+
+
+@app.route("/routes")
+def routes():
+    return "<br>".join(sorted([str(r) for r in app.url_map.iter_rules()]))
+
+
+# -------------------------------------------------
+# AUTH
+# -------------------------------------------------
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -395,19 +432,9 @@ def logout():
     return redirect(url_for("login"))
 
 
-@app.context_processor
-def inject_user():
-    return dict(
-        user_id=session.get("user_id"),
-        user_name=session.get("name"),
-    )
-
-
-@app.route("/routes")
-def routes():
-    return "<br>".join(sorted([str(r) for r in app.url_map.iter_rules()]))
-
-
+# -------------------------------------------------
+# MAIN
+# -------------------------------------------------
 @app.route("/", methods=["GET", "POST"])
 def index():
     if not is_logged_in():
@@ -570,6 +597,9 @@ def detail(report_id):
     return render_template("detail.html", report=report)
 
 
+# -------------------------------------------------
+# USERS
+# -------------------------------------------------
 @app.route("/users")
 def users_list():
     if not is_logged_in():
@@ -638,6 +668,9 @@ def users_add():
     return render_template("users_add.html")
 
 
+# -------------------------------------------------
+# PDF
+# -------------------------------------------------
 @app.route("/report/pdf/<int:report_id>")
 def report_pdf(report_id):
     if not is_logged_in():
@@ -673,7 +706,7 @@ def report_pdf(report_id):
     p.setFillColorRGB(*red)
     p.rect(0, height - 72, width, 72, fill=1, stroke=0)
 
-    logo_path = os.path.join(BASE_DIR, "static", "logo-pejo.png")
+    logo_path = os.path.join(BASE_DIR, "static", "logo.png")
     if os.path.exists(logo_path):
         try:
             p.drawImage(
