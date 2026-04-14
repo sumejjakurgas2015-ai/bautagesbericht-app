@@ -27,6 +27,10 @@ app = Flask(
     static_folder=os.path.join(BASE_DIR, "static"),
 )
 
+@app.route("/radi-li")
+def radi_li():
+    return "RADI"
+
 @app.route("/test-static")
 def test_static():
     return app.send_static_file("icon-192.png")
