@@ -158,6 +158,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS reports (
             id SERIAL PRIMARY KEY,
             company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
             datum TEXT,
             wetter TEXT,
             arbeitszeit_von TEXT,
@@ -190,6 +191,7 @@ def init_db():
 
     add_column_if_missing(cur, "reports", "wetter", "TEXT")
     add_column_if_missing(cur, "reports", "arbeitszeit_von", "TEXT")
+    add_column_if_missing(cur, "reports", "user_id", "INTEGER")
     add_column_if_missing(cur, "reports", "arbeitszeit_bis", "TEXT")
     add_column_if_missing(cur, "reports", "pause_stunden", "NUMERIC")
     add_column_if_missing(cur, "reports", "netto_stunden", "NUMERIC")
