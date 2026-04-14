@@ -189,9 +189,9 @@ def init_db():
         """
     )
 
+    add_column_if_missing(cur, "reports", "user_id", "INTEGER")
     add_column_if_missing(cur, "reports", "wetter", "TEXT")
     add_column_if_missing(cur, "reports", "arbeitszeit_von", "TEXT")
-    add_column_if_missing(cur, "reports", "user_id", "INTEGER")
     add_column_if_missing(cur, "reports", "arbeitszeit_bis", "TEXT")
     add_column_if_missing(cur, "reports", "pause_stunden", "NUMERIC")
     add_column_if_missing(cur, "reports", "netto_stunden", "NUMERIC")
@@ -235,6 +235,10 @@ def current_company_id():
     return int(session.get("company_id", DEFAULT_COMPANY_ID))
 
 
+def current_user_id():
+    return int(session.get("user_id"))
+
+
 def to_float(value, default=0.0):
     try:
         if value in (None, ""):
@@ -259,7 +263,7 @@ def calculate_netto_hours(von, bis, pause_hours):
         return 0.0
 
 
-def get_reports_for_company(company_id, limit=None):
+def get_reports_for_user(company_id, user_id, limit=None):
     conn = get_db()
     cur = conn.cursor()
 
@@ -268,21 +272,21 @@ def get_reports_for_company(company_id, limit=None):
             """
             SELECT *
             FROM reports
-            WHERE company_id = %s
+            WHERE company_id = %s AND user_id = %s
             ORDER BY created_at DESC, id DESC
             LIMIT %s
             """,
-            (company_id, limit),
+            (company_id, user_id, limit),
         )
     else:
         cur.execute(
             """
             SELECT *
             FROM reports
-            WHERE company_id = %s
+            WHERE company_id = %s AND user_id = %s
             ORDER BY created_at DESC, id DESC
             """,
-            (company_id,),
+            (company_id, user_id),
         )
 
     reports = cur.fetchall()
@@ -443,6 +447,7 @@ def index():
         return redirect(url_for("login"))
 
     company_id = current_company_id()
+    user_id = current_user_id()
 
     if request.method == "POST":
         datum = request.form.get("datum")
@@ -483,7 +488,7 @@ def index():
             cur.execute(
                 """
                 INSERT INTO reports (
-                    company_id, datum, wetter,
+                    company_id, user_id, datum, wetter,
                     arbeitszeit_von, arbeitszeit_bis, pause_stunden, netto_stunden,
                     baustelle, team,
                     polier_name, polier_stunden,
@@ -496,7 +501,7 @@ def index():
                     bauleiter, ersteller
                 )
                 VALUES (
-                    %s, %s, %s,
+                    %s, %s, %s, %s,
                     %s, %s, %s, %s,
                     %s, %s,
                     %s, %s,
@@ -512,6 +517,7 @@ def index():
                 """,
                 (
                     company_id,
+                    user_id,
                     datum,
                     wetter,
                     arbeitszeit_von,
@@ -556,7 +562,7 @@ def index():
 
         return redirect(url_for("list_reports"))
 
-    reports = get_reports_for_company(company_id, limit=30)
+    reports = get_reports_for_user(company_id, user_id, limit=30)
 
     return render_template(
         "index.html",
@@ -571,7 +577,8 @@ def list_reports():
         return redirect(url_for("login"))
 
     company_id = current_company_id()
-    reports = get_reports_for_company(company_id)
+    user_id = current_user_id()
+    reports = get_reports_for_user(company_id, user_id)
 
     return render_template("list.html", reports=reports)
 
@@ -582,12 +589,17 @@ def detail(report_id):
         return redirect(url_for("login"))
 
     company_id = current_company_id()
+    user_id = current_user_id()
 
     conn = get_db()
     cur = conn.cursor()
     cur.execute(
-        "SELECT * FROM reports WHERE id = %s AND company_id = %s",
-        (report_id, company_id),
+        """
+        SELECT *
+        FROM reports
+        WHERE id = %s AND company_id = %s AND user_id = %s
+        """,
+        (report_id, company_id, user_id),
     )
     report = cur.fetchone()
     cur.close()
@@ -679,15 +691,17 @@ def report_pdf(report_id):
         return redirect(url_for("login"))
 
     company_id = current_company_id()
+    user_id = current_user_id()
 
     conn = get_db()
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT * FROM reports
-        WHERE id = %s AND company_id = %s
+        SELECT *
+        FROM reports
+        WHERE id = %s AND company_id = %s AND user_id = %s
         """,
-        (report_id, company_id),
+        (report_id, company_id, user_id),
     )
     report = cur.fetchone()
     cur.close()
