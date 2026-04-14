@@ -183,6 +183,8 @@ def init_db():
     add_column_if_missing(cur, "reports", "arbeit", "TEXT")
     add_column_if_missing(cur, "reports", "material", "TEXT")
     add_column_if_missing(cur, "reports", "bemerkung", "TEXT")
+    add_column_if_missing(cur, "reports", "bauleiter", "TEXT")
+    add_column_if_missing(cur, "reports", "ersteller", "TEXT")
 
     reset_sequences(cur)
 
@@ -224,6 +226,38 @@ def calculate_netto_hours(von, bis, pause_hours):
         return round(max(netto, 0), 2)
     except Exception:
         return 0.0
+
+
+def get_reports_for_company(company_id, limit=None):
+    conn = get_db()
+    cur = conn.cursor()
+
+    if limit:
+        cur.execute(
+            """
+            SELECT *
+            FROM reports
+            WHERE company_id = %s
+            ORDER BY created_at DESC, id DESC
+            LIMIT %s
+            """,
+            (company_id, limit),
+        )
+    else:
+        cur.execute(
+            """
+            SELECT *
+            FROM reports
+            WHERE company_id = %s
+            ORDER BY created_at DESC, id DESC
+            """,
+            (company_id,),
+        )
+
+    reports = cur.fetchall()
+    cur.close()
+    conn.close()
+    return reports
 
 
 @app.route("/health")
@@ -430,6 +464,7 @@ def index():
                     %s, %s,
                     %s, %s, %s
                 )
+                RETURNING id
                 """,
                 (
                     company_id,
@@ -458,8 +493,14 @@ def index():
                     bemerkung,
                 ),
             )
+            saved_report = cur.fetchone()
             conn.commit()
-            flash("Bericht gespeichert.", "success")
+
+            if saved_report:
+                flash(f"Bericht gespeichert. ID: {saved_report['id']}", "success")
+            else:
+                flash("Bericht gespeichert.", "success")
+
         except Exception as e:
             conn.rollback()
             flash(f"Fehler: {str(e)}", "error")
@@ -467,17 +508,9 @@ def index():
             cur.close()
             conn.close()
 
-        return redirect(url_for("index"))
+        return redirect(url_for("list_reports"))
 
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT * FROM reports WHERE company_id = %s ORDER BY id DESC LIMIT 30",
-        (company_id,),
-    )
-    reports = cur.fetchall()
-    cur.close()
-    conn.close()
+    reports = get_reports_for_company(company_id, limit=30)
 
     return render_template(
         "index.html",
@@ -492,16 +525,7 @@ def list_reports():
         return redirect(url_for("login"))
 
     company_id = current_company_id()
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT * FROM reports WHERE company_id = %s ORDER BY id DESC",
-        (company_id,),
-    )
-    reports = cur.fetchall()
-    cur.close()
-    conn.close()
+    reports = get_reports_for_company(company_id)
 
     return render_template("list.html", reports=reports)
 
@@ -624,17 +648,14 @@ def report_pdf(report_id):
     p = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
 
-    # PEJO boje
     red = (237 / 255, 28 / 255, 36 / 255)
     dark_grey = (107 / 255, 107 / 255, 107 / 255)
     light_grey = (242 / 255, 242 / 255, 242 / 255)
     medium_grey = (217 / 255, 217 / 255, 217 / 255)
 
-    # Header
     p.setFillColorRGB(*red)
     p.rect(0, height - 72, width, 72, fill=1, stroke=0)
 
-    # Logo
     logo_path = os.path.join(BASE_DIR, "static", "logo-pejo.png")
     if os.path.exists(logo_path):
         try:
@@ -653,23 +674,19 @@ def report_pdf(report_id):
     p.setFillColorRGB(1, 1, 1)
     p.setFont("Helvetica-Bold", 20)
     p.drawString(110, height - 42, "BAUTAGESBERICHT")
-
     p.setFont("Helvetica", 10)
     p.drawString(110, height - 60, "Digitaler Tagesbericht")
 
-    # outer border
     p.setStrokeColorRGB(*medium_grey)
     p.rect(25, 25, width - 50, height - 122, stroke=1, fill=0)
 
     y = height - 98
 
-    # Info title
     p.setFillColorRGB(*dark_grey)
     p.setFont("Helvetica-Bold", 12)
     p.drawString(40, y, "Allgemeine Angaben")
     y -= 18
 
-    # Info background
     p.setFillColorRGB(*light_grey)
     p.rect(35, y - 58, width - 70, 58, fill=1, stroke=0)
 
@@ -701,14 +718,12 @@ def report_pdf(report_id):
     p.setStrokeColorRGB(*medium_grey)
     p.line(35, y, width - 35, y)
 
-    # Personal
     y -= 24
     p.setFillColorRGB(*dark_grey)
     p.setFont("Helvetica-Bold", 12)
     p.drawString(40, y, "Personal")
     y -= 18
 
-    # table header
     p.setFillColorRGB(*light_grey)
     p.rect(35, y - 14, width - 70, 20, fill=1, stroke=0)
 
@@ -739,7 +754,6 @@ def report_pdf(report_id):
         p.line(40, y - 6, width - 40, y - 6)
         y -= 18
 
-    # Team
     y -= 12
     p.setFillColorRGB(*dark_grey)
     p.setFont("Helvetica-Bold", 12)
@@ -753,7 +767,6 @@ def report_pdf(report_id):
     p.drawString(45, y, str(report.get("team") or ""))
     y -= 34
 
-    # Tätigkeiten
     p.setFillColorRGB(*dark_grey)
     p.setFont("Helvetica-Bold", 12)
     p.drawString(40, y, "Taetigkeiten")
@@ -766,7 +779,6 @@ def report_pdf(report_id):
     p.drawString(45, y, str(report.get("arbeit") or ""))
     y -= 58
 
-    # Material
     p.setFillColorRGB(*dark_grey)
     p.setFont("Helvetica-Bold", 12)
     p.drawString(40, y, "Material")
@@ -779,7 +791,6 @@ def report_pdf(report_id):
     p.drawString(45, y, str(report.get("material") or ""))
     y -= 42
 
-    # Bemerkung
     p.setFillColorRGB(*dark_grey)
     p.setFont("Helvetica-Bold", 12)
     p.drawString(40, y, "Bemerkung")
@@ -792,7 +803,6 @@ def report_pdf(report_id):
     p.drawString(45, y, str(report.get("bemerkung") or ""))
     y -= 50
 
-    # Signature
     p.setStrokeColorRGB(*dark_grey)
     p.line(360, 80, width - 50, 80)
     p.setFillColorRGB(*dark_grey)
