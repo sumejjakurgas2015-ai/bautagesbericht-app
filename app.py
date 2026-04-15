@@ -1,6 +1,8 @@
 import os
 from datetime import date
 from io import BytesIO
+from dotenv import load_dotenv
+load_dotenv()
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -268,6 +270,11 @@ def calculate_netto_hours(von, bis, pause_hours):
         return round(max(netto, 0), 2)
     except Exception:
         return 0.0
+
+
+def pdf_text(value):
+    text = str(value or "")
+    return text.encode("latin-1", "replace").decode("latin-1")
 
 
 def get_reports_for_user(company_id, user_id, limit=None):
@@ -690,7 +697,7 @@ def users_list():
 
         conn = get_db()
         cur = conn.cursor()
-     
+
         cur.execute(
             """
             SELECT id, name, role, company_id, created_at
@@ -860,15 +867,15 @@ def report_pdf(report_id):
 
     p.setFillColorRGB(0, 0, 0)
     p.setFont("Helvetica", 10)
-    p.drawString(95, y - 14, str(report.get("datum") or ""))
-    p.drawString(295, y - 14, str(report.get("baustelle") or ""))
-    p.drawString(95, y - 38, str(report.get("wetter") or ""))
+    p.drawString(95, y - 14, pdf_text(report.get("datum")))
+    p.drawString(295, y - 14, pdf_text(report.get("baustelle")))
+    p.drawString(95, y - 38, pdf_text(report.get("wetter")))
     p.drawString(
         295,
         y - 38,
-        f"{report.get('arbeitszeit_von') or ''} - {report.get('arbeitszeit_bis') or ''}",
+        pdf_text(f"{report.get('arbeitszeit_von') or ''} - {report.get('arbeitszeit_bis') or ''}"),
     )
-    p.drawString(115, y - 62, str(report.get("bauleiter") or ""))
+    p.drawString(115, y - 62, pdf_text(report.get("bauleiter")))
 
     y -= 92
 
@@ -909,9 +916,9 @@ def report_pdf(report_id):
     p.setFont("Helvetica", 10)
 
     for role, name, hours in workers:
-        p.drawString(45, y, str(role))
-        p.drawString(180, y, str(name or "-"))
-        p.drawString(430, y, f"{hours or 0} h")
+        p.drawString(45, y, pdf_text(role))
+        p.drawString(180, y, pdf_text(name or "-"))
+        p.drawString(430, y, pdf_text(f"{hours or 0} h"))
         p.setStrokeColorRGB(*medium_grey)
         p.line(40, y - 6, width - 40, y - 6)
         y -= 18
@@ -926,7 +933,7 @@ def report_pdf(report_id):
     p.rect(35, y - 16, width - 70, 24, fill=1, stroke=0)
     p.setFillColorRGB(0, 0, 0)
     p.setFont("Helvetica", 10)
-    p.drawString(45, y, str(report.get("team") or ""))
+    p.drawString(45, y, pdf_text(report.get("team")))
     y -= 34
 
     p.setFillColorRGB(*dark_grey)
@@ -938,7 +945,7 @@ def report_pdf(report_id):
     p.rect(35, y - 40, width - 70, 48, fill=1, stroke=0)
     p.setFillColorRGB(0, 0, 0)
     p.setFont("Helvetica", 10)
-    p.drawString(45, y, str(report.get("arbeit") or ""))
+    p.drawString(45, y, pdf_text(report.get("arbeit")))
     y -= 58
 
     p.setFillColorRGB(*dark_grey)
@@ -950,7 +957,7 @@ def report_pdf(report_id):
     p.rect(35, y - 24, width - 70, 32, fill=1, stroke=0)
     p.setFillColorRGB(0, 0, 0)
     p.setFont("Helvetica", 10)
-    p.drawString(45, y, str(report.get("material") or ""))
+    p.drawString(45, y, pdf_text(report.get("material")))
     y -= 42
 
     p.setFillColorRGB(*dark_grey)
@@ -962,14 +969,14 @@ def report_pdf(report_id):
     p.rect(35, y - 32, width - 70, 40, fill=1, stroke=0)
     p.setFillColorRGB(0, 0, 0)
     p.setFont("Helvetica", 10)
-    p.drawString(45, y, str(report.get("bemerkung") or ""))
+    p.drawString(45, y, pdf_text(report.get("bemerkung")))
     y -= 50
 
     p.setStrokeColorRGB(*dark_grey)
     p.line(300, 80, width - 50, 80)
     p.setFillColorRGB(*dark_grey)
     p.setFont("Helvetica", 9)
-    p.drawString(300, 65, f"Erstellt von: {report.get('ersteller') or ''}")
+    p.drawString(300, 65, pdf_text(f"Erstellt von: {report.get('ersteller') or ''}"))
 
     p.showPage()
     p.save()
