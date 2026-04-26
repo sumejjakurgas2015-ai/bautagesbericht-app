@@ -272,6 +272,25 @@ def calculate_netto_hours(von, bis, pause_hours):
 
 def pdf_text(value):
     text = str(value or "")
+
+    replacements = {
+        "•": "-",
+        "▪": "-",
+        "■": "-",
+        "●": "-",
+        "–": "-",
+        "—": "-",
+        "“": '"',
+        "”": '"',
+        "„": '"',
+        "’": "'",
+        "‘": "'",
+        "\u00a0": " ",
+    }
+
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+
     return text.encode("latin-1", "replace").decode("latin-1")
 
 
