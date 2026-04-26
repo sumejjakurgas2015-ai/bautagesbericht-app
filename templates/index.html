@@ -86,6 +86,19 @@ button {
   margin-top: 10px;
   background: #ef4444;
 }
+.temp-wrap {
+  position: relative;
+}
+.temp-wrap span {
+  position: absolute;
+  right: 12px;
+  top: 11px;
+  color: #ccc;
+  font-weight: bold;
+}
+.temp-wrap input {
+  padding-right: 40px;
+}
 @media (max-width: 900px) {
   .grid-2, .grid-3 {
     grid-template-columns: 1fr;
@@ -98,6 +111,7 @@ button {
 <form method="POST">
   <div class="section">
     <div class="section-title">Grunddaten</div>
+
     <div class="grid-2">
       <div>
         <label>Datum</label>
@@ -106,6 +120,7 @@ button {
 
       <div>
         <label>Wetter / Temperatur</label>
+
         <div class="wetter-box">
           <select name="wetter">
             <option value="">Wetter wählen</option>
@@ -116,7 +131,11 @@ button {
             <option value="Kalt">Kalt</option>
             <option value="Schnee">Schnee</option>
           </select>
-          <input type="number" name="temperatur" placeholder="°C">
+
+          <div class="temp-wrap">
+            <input type="number" name="temperatur" placeholder="23">
+            <span>°C</span>
+          </div>
         </div>
       </div>
     </div>
@@ -129,15 +148,18 @@ button {
 
   <div class="section">
     <div class="section-title">Arbeitszeit</div>
+
     <div class="grid-3">
       <div>
         <label>Von</label>
         <input type="time" name="arbeitszeit_von" value="07:00">
       </div>
+
       <div>
         <label>Bis</label>
         <input type="time" name="arbeitszeit_bis" value="16:00">
       </div>
+
       <div>
         <label>Pause (Std.)</label>
         <input type="number" name="pause_stunden" step="0.25" min="0" placeholder="0.5">
@@ -147,10 +169,12 @@ button {
 
   <div class="section">
     <div class="section-title">Baustelle & Team</div>
+
     <div>
       <label>Baustelle (Pflichtfeld)</label>
       <input name="baustelle" required>
     </div>
+
     <div style="margin-top:10px;">
       <label>Team / Personal</label>
       <input name="team">
@@ -159,14 +183,16 @@ button {
 
   <div class="section">
     <div class="section-title">Personal / Rollen</div>
+
     <div class="grid-2">
+
       <div>
         <label>Polier</label>
         <input name="polier_name">
       </div>
       <div>
         <label>Polier (Stunden)</label>
-        <input type="number" name="polier_stunden" step="0.25" min="0">
+        <input type="number" name="polier_stunden" step="0.25">
       </div>
 
       <div>
@@ -175,7 +201,7 @@ button {
       </div>
       <div>
         <label>Vorarbeiter (Stunden)</label>
-        <input type="number" name="vorarbeiter_stunden" step="0.25" min="0">
+        <input type="number" name="vorarbeiter_stunden" step="0.25">
       </div>
 
       <div>
@@ -184,7 +210,7 @@ button {
       </div>
       <div>
         <label>Facharbeiter (Stunden)</label>
-        <input type="number" name="facharbeiter_stunden" step="0.25" min="0">
+        <input type="number" name="facharbeiter_stunden" step="0.25">
       </div>
 
       <div>
@@ -193,7 +219,7 @@ button {
       </div>
       <div>
         <label>Elektriker (Stunden)</label>
-        <input type="number" name="elektriker_stunden" step="0.25" min="0">
+        <input type="number" name="elektriker_stunden" step="0.25">
       </div>
 
       <div>
@@ -202,7 +228,7 @@ button {
       </div>
       <div>
         <label>Helfer (Stunden)</label>
-        <input type="number" name="helfer_stunden" step="0.25" min="0">
+        <input type="number" name="helfer_stunden" step="0.25">
       </div>
 
       <div>
@@ -211,25 +237,30 @@ button {
       </div>
       <div>
         <label>LKW Fahrer (Stunden)</label>
-        <input type="number" name="lkw_fahrer_stunden" step="0.25" min="0">
+        <input type="number" name="lkw_fahrer_stunden" step="0.25">
       </div>
+
     </div>
   </div>
 
   <div class="section">
     <div class="section-title">Tätigkeiten</div>
+
     <div>
       <label>Arbeiten</label>
       <textarea name="arbeit"></textarea>
     </div>
+
     <div style="margin-top:10px;">
       <label>Material</label>
       <textarea name="material"></textarea>
     </div>
+
     <div style="margin-top:10px;">
       <label>Bemerkung</label>
       <textarea name="bemerkung"></textarea>
     </div>
+
     <div style="margin-top:10px;">
       <label>Erstellt von</label>
       <input name="ersteller" placeholder="Vorname und Nachname">
@@ -247,31 +278,40 @@ button {
 
     <input type="hidden" name="signature" id="signature-data">
 
-    <button type="button" class="clear-btn" onclick="clearSignature()">Unterschrift löschen</button>
+    <button type="button" class="clear-btn" onclick="clearSignature()">
+      Unterschrift löschen
+    </button>
   </div>
 
   <button type="submit">Speichern</button>
 </form>
 
 <hr>
+
 <h3>Berichte dieser Firma:</h3>
 
 {% if reports %}
-  <ul>
-    {% for r in reports %}
-      <li>
-        <strong>{{ r["baustelle"] }}</strong> –
-        {{ r["arbeit"] }} –
-        {{ r["created_at"] }}
-        |
-        <a href="/detail/{{ r['id'] }}">Detalji</a>
-        |
-        <a href="/report/pdf/{{ r['id'] }}" target="_blank">PDF</a>
-      </li>
-    {% endfor %}
-  </ul>
+<ul>
+{% for r in reports %}
+<li>
+<strong>{{ r["baustelle"] }}</strong> –
+{{ r["arbeit"] }} –
+{{ r["created_at"] }}
+
+{% if r["temperatur"] %}
+| {{ r["temperatur"] }} °C
+{% endif %}
+
+|
+<a href="/detail/{{ r['id'] }}">Detalji</a>
+|
+<a href="/report/pdf/{{ r['id'] }}" target="_blank">PDF</a>
+
+</li>
+{% endfor %}
+</ul>
 {% else %}
-  <p>Keine Berichte vorhanden.</p>
+<p>Keine Berichte vorhanden.</p>
 {% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>

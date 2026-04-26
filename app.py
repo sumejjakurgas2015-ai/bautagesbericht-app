@@ -37,9 +37,6 @@ app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
 DEFAULT_COMPANY_ID = int(os.environ.get("COMPANY_ID", "1"))
 
 
-# -------------------------------------------------
-# TEST ROUTES
-# -------------------------------------------------
 @app.route("/radi-li")
 def radi_li():
     return "RADI", 200
@@ -58,9 +55,6 @@ def manifest_test():
     )
 
 
-# -------------------------------------------------
-# DATABASE
-# -------------------------------------------------
 def get_db():
     db_url = os.environ.get("DATABASE_URL")
     if not db_url:
@@ -93,7 +87,6 @@ def reset_sequences(cur):
         );
         """
     )
-
     cur.execute(
         """
         SELECT setval(
@@ -103,7 +96,6 @@ def reset_sequences(cur):
         );
         """
     )
-
     cur.execute(
         """
         SELECT setval(
@@ -238,9 +230,6 @@ def init_db():
 init_db()
 
 
-# -------------------------------------------------
-# HELPERS
-# -------------------------------------------------
 def is_logged_in():
     return "user_id" in session and "company_id" in session
 
@@ -378,9 +367,6 @@ def get_reports_for_company(company_id, limit=None):
     return reports
 
 
-# -------------------------------------------------
-# BASIC ROUTES
-# -------------------------------------------------
 @app.route("/health")
 def health():
     return "OK", 200
@@ -400,9 +386,6 @@ def routes():
     return "<br>".join(sorted([str(r) for r in app.url_map.iter_rules()]))
 
 
-# -------------------------------------------------
-# AUTH
-# -------------------------------------------------
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -524,9 +507,6 @@ def logout():
     return redirect(url_for("login"))
 
 
-# -------------------------------------------------
-# MAIN
-# -------------------------------------------------
 @app.route("/", methods=["GET", "POST"])
 def index():
     if not is_logged_in():
@@ -537,12 +517,9 @@ def index():
 
     if request.method == "POST":
         datum = request.form.get("datum")
-        wetter = request.form.get("wetter", "")
-        temperatur = request.form.get("temperatur", "")
+        wetter = (request.form.get("wetter") or "").strip()
+        temperatur = (request.form.get("temperatur") or "").strip()
         signature = request.form.get("signature", "")
-
-        if temperatur:
-            wetter = f"{wetter} | {temperatur}°C"
 
         arbeitszeit_von = request.form.get("arbeitszeit_von")
         arbeitszeit_bis = request.form.get("arbeitszeit_bis")
@@ -731,9 +708,6 @@ def detail(report_id):
     return render_template("detail.html", report=report)
 
 
-# -------------------------------------------------
-# USERS
-# -------------------------------------------------
 @app.route("/users")
 def users_list():
     if not is_logged_in():
@@ -816,9 +790,6 @@ def users_add():
         return f"USERS ADD ERROR: {str(e)}", 500
 
 
-# -------------------------------------------------
-# PDF
-# -------------------------------------------------
 @app.route("/report/pdf/<int:report_id>")
 def report_pdf(report_id):
     if not is_logged_in():
@@ -912,11 +883,17 @@ def report_pdf(report_id):
     p.drawString(220, y - 38, "Arbeitszeit:")
     p.drawString(45, y - 62, "Bauleiter:")
 
+    wetter_text = report.get("wetter") or ""
+    temperatur_text = report.get("temperatur") or ""
+
+    if temperatur_text:
+        wetter_text = f"{wetter_text} / {temperatur_text} °C"
+
     p.setFillColorRGB(0, 0, 0)
     p.setFont("Helvetica", 10)
     p.drawString(95, y - 14, pdf_text(report.get("datum")))
     p.drawString(295, y - 14, pdf_text(report.get("baustelle")))
-    p.drawString(95, y - 38, pdf_text(report.get("wetter")))
+    p.drawString(95, y - 38, pdf_text(wetter_text))
     p.drawString(
         295,
         y - 38,
@@ -1018,7 +995,6 @@ def report_pdf(report_id):
     p.setFont("Helvetica", 10)
     p.drawString(45, y, pdf_text(report.get("bemerkung")))
 
-    # Elektronische Unterschrift unten im PDF
     p.setFillColorRGB(*dark_grey)
     p.setFont("Helvetica-Bold", 10)
     p.drawString(300, 145, "Elektronische Unterschrift:")
