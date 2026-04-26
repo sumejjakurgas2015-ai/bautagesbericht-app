@@ -29,13 +29,16 @@ label {
   display: block;
   margin-bottom: 6px;
 }
-input, textarea {
+input, textarea, select {
   width: 100%;
   padding: 10px;
   border-radius: 10px;
   border: 1px solid rgba(255,255,255,0.2);
   background: rgba(255,255,255,0.05);
   color: white;
+}
+select option {
+  color: black;
 }
 textarea {
   min-height: 100px;
@@ -48,6 +51,40 @@ button {
   color: white;
   font-weight: 600;
   cursor: pointer;
+}
+.wetter-box {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.05);
+}
+.wetter-box select,
+.wetter-box input {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+.wetter-box input {
+  border-left: 2px solid rgba(255,255,255,0.35);
+}
+.signature-wrap {
+  background: white;
+  border-radius: 12px;
+  padding: 10px;
+}
+#signature-pad {
+  width: 100%;
+  height: 200px;
+  border: 2px dashed #999;
+  border-radius: 10px;
+  background: white;
+  touch-action: none;
+}
+.clear-btn {
+  margin-top: 10px;
+  background: #ef4444;
 }
 @media (max-width: 900px) {
   .grid-2, .grid-3 {
@@ -66,9 +103,21 @@ button {
         <label>Datum</label>
         <input name="datum" value="{{ heute }}" required>
       </div>
+
       <div>
-        <label>Wetter</label>
-        <input name="wetter" placeholder="z.B. sonnig, kalt, Regen">
+        <label>Wetter / Temperatur</label>
+        <div class="wetter-box">
+          <select name="wetter">
+            <option value="">Wetter wählen</option>
+            <option value="Sonnig">Sonnig</option>
+            <option value="Bewölkt">Bewölkt</option>
+            <option value="Regen">Regen</option>
+            <option value="Windig">Windig</option>
+            <option value="Kalt">Kalt</option>
+            <option value="Schnee">Schnee</option>
+          </select>
+          <input type="number" name="temperatur" placeholder="°C">
+        </div>
       </div>
     </div>
 
@@ -187,6 +236,20 @@ button {
     </div>
   </div>
 
+  <div class="section">
+    <div class="section-title">Elektronische Unterschrift</div>
+
+    <label>Unterschrift mit Finger oder Maus</label>
+
+    <div class="signature-wrap">
+      <canvas id="signature-pad"></canvas>
+    </div>
+
+    <input type="hidden" name="signature" id="signature-data">
+
+    <button type="button" class="clear-btn" onclick="clearSignature()">Unterschrift löschen</button>
+  </div>
+
   <button type="submit">Speichern</button>
 </form>
 
@@ -210,5 +273,39 @@ button {
 {% else %}
   <p>Keine Berichte vorhanden.</p>
 {% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+
+<script>
+const canvas = document.getElementById("signature-pad");
+const signatureInput = document.getElementById("signature-data");
+
+function resizeCanvas() {
+  const ratio = Math.max(window.devicePixelRatio || 1, 1);
+  canvas.width = canvas.offsetWidth * ratio;
+  canvas.height = 200 * ratio;
+  canvas.getContext("2d").scale(ratio, ratio);
+}
+
+resizeCanvas();
+
+const signaturePad = new SignaturePad(canvas, {
+  backgroundColor: "rgb(255,255,255)",
+  penColor: "rgb(0,0,0)"
+});
+
+window.addEventListener("resize", resizeCanvas);
+
+function clearSignature() {
+  signaturePad.clear();
+  signatureInput.value = "";
+}
+
+document.querySelector("form").addEventListener("submit", function () {
+  if (!signaturePad.isEmpty()) {
+    signatureInput.value = signaturePad.toDataURL("image/png");
+  }
+});
+</script>
 
 {% endblock %}

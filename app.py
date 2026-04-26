@@ -1,11 +1,14 @@
 import os
+import base64
 from datetime import date
 from io import BytesIO
+
 from dotenv import load_dotenv
 load_dotenv()
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
+
 from flask import (
     Flask,
     render_template,
@@ -16,8 +19,10 @@ from flask import (
     session,
     send_file,
 )
+
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
+from reportlab.lib.utils import ImageReader
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -166,6 +171,8 @@ def init_db():
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
             datum TEXT,
             wetter TEXT,
+            temperatur TEXT,
+            signature TEXT,
             arbeitszeit_von TEXT,
             arbeitszeit_bis TEXT,
             pause_stunden NUMERIC,
@@ -196,6 +203,8 @@ def init_db():
 
     add_column_if_missing(cur, "reports", "user_id", "INTEGER")
     add_column_if_missing(cur, "reports", "wetter", "TEXT")
+    add_column_if_missing(cur, "reports", "temperatur", "TEXT")
+    add_column_if_missing(cur, "reports", "signature", "TEXT")
     add_column_if_missing(cur, "reports", "arbeitszeit_von", "TEXT")
     add_column_if_missing(cur, "reports", "arbeitszeit_bis", "TEXT")
     add_column_if_missing(cur, "reports", "pause_stunden", "NUMERIC")
@@ -275,6 +284,30 @@ def calculate_netto_hours(von, bis, pause_hours):
 def pdf_text(value):
     text = str(value or "")
     return text.encode("latin-1", "replace").decode("latin-1")
+
+
+def draw_signature_on_pdf(p, signature_data, x, y, width=180, height=60):
+    try:
+        if not signature_data:
+            return
+
+        if "," in signature_data:
+            signature_data = signature_data.split(",", 1)[1]
+
+        img_bytes = base64.b64decode(signature_data)
+        img = ImageReader(BytesIO(img_bytes))
+
+        p.drawImage(
+            img,
+            x,
+            y,
+            width=width,
+            height=height,
+            preserveAspectRatio=True,
+            mask="auto",
+        )
+    except Exception:
+        pass
 
 
 def get_reports_for_user(company_id, user_id, limit=None):
@@ -504,7 +537,13 @@ def index():
 
     if request.method == "POST":
         datum = request.form.get("datum")
-        wetter = request.form.get("wetter")
+        wetter = request.form.get("wetter", "")
+        temperatur = request.form.get("temperatur", "")
+        signature = request.form.get("signature", "")
+
+        if temperatur:
+            wetter = f"{wetter} | {temperatur}°C"
+
         arbeitszeit_von = request.form.get("arbeitszeit_von")
         arbeitszeit_bis = request.form.get("arbeitszeit_bis")
         pause_stunden = to_float(request.form.get("pause_stunden"), 0.0)
@@ -517,14 +556,19 @@ def index():
 
         polier_name = request.form.get("polier_name")
         polier_stunden = to_float(request.form.get("polier_stunden"), 0.0)
+
         vorarbeiter_name = request.form.get("vorarbeiter_name")
         vorarbeiter_stunden = to_float(request.form.get("vorarbeiter_stunden"), 0.0)
+
         facharbeiter_name = request.form.get("facharbeiter_name")
         facharbeiter_stunden = to_float(request.form.get("facharbeiter_stunden"), 0.0)
+
         elektriker_name = request.form.get("elektriker_name")
         elektriker_stunden = to_float(request.form.get("elektriker_stunden"), 0.0)
+
         helfer_name = request.form.get("helfer_name")
         helfer_stunden = to_float(request.form.get("helfer_stunden"), 0.0)
+
         lkw_fahrer_name = request.form.get("lkw_fahrer_name")
         lkw_fahrer_stunden = to_float(request.form.get("lkw_fahrer_stunden"), 0.0)
 
@@ -541,7 +585,7 @@ def index():
             cur.execute(
                 """
                 INSERT INTO reports (
-                    company_id, user_id, datum, wetter,
+                    company_id, user_id, datum, wetter, temperatur, signature,
                     arbeitszeit_von, arbeitszeit_bis, pause_stunden, netto_stunden,
                     baustelle, team,
                     polier_name, polier_stunden,
@@ -554,7 +598,7 @@ def index():
                     bauleiter, ersteller
                 )
                 VALUES (
-                    %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s,
                     %s, %s, %s, %s,
                     %s, %s,
                     %s, %s,
@@ -573,6 +617,8 @@ def index():
                     user_id,
                     datum,
                     wetter,
+                    temperatur,
+                    signature,
                     arbeitszeit_von,
                     arbeitszeit_bis,
                     pause_stunden,
@@ -692,6 +738,7 @@ def detail(report_id):
 def users_list():
     if not is_logged_in():
         return redirect(url_for("login"))
+
     try:
         company_id = current_company_id()
 
@@ -880,8 +927,8 @@ def report_pdf(report_id):
     y -= 92
 
     p.setFont("Helvetica", 10)
-    p.drawString(45, y, f"Pause: {report.get('pause_stunden') or 0} h")
-    p.drawString(220, y, f"Netto: {report.get('netto_stunden') or 0} h")
+    p.drawString(45, y, pdf_text(f"Pause: {report.get('pause_stunden') or 0} h"))
+    p.drawString(220, y, pdf_text(f"Netto: {report.get('netto_stunden') or 0} h"))
 
     y -= 24
     p.setStrokeColorRGB(*medium_grey)
@@ -970,10 +1017,24 @@ def report_pdf(report_id):
     p.setFillColorRGB(0, 0, 0)
     p.setFont("Helvetica", 10)
     p.drawString(45, y, pdf_text(report.get("bemerkung")))
-    y -= 50
+
+    # Elektronische Unterschrift unten im PDF
+    p.setFillColorRGB(*dark_grey)
+    p.setFont("Helvetica-Bold", 10)
+    p.drawString(300, 145, "Elektronische Unterschrift:")
+
+    draw_signature_on_pdf(
+        p,
+        report.get("signature"),
+        x=300,
+        y=82,
+        width=190,
+        height=55,
+    )
 
     p.setStrokeColorRGB(*dark_grey)
     p.line(300, 80, width - 50, 80)
+
     p.setFillColorRGB(*dark_grey)
     p.setFont("Helvetica", 9)
     p.drawString(300, 65, pdf_text(f"Erstellt von: {report.get('ersteller') or ''}"))
