@@ -518,6 +518,12 @@ def login():
             conn.close()
 
     return render_template("login.html")
+@app.route("/dashboard")
+def dashboard():
+    if not is_logged_in():
+        return redirect(url_for("login"))
+
+    return render_template("dashboard.html")
 
 
 @app.route("/logout")
