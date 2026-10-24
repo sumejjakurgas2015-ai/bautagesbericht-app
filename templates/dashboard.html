@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+.dashboard {
+    max-width: 1000px;
+    margin: 30px auto;
+    padding: 20px;
+}
+
+.dashboard-title {
+    text-align: center;
+    margin-bottom: 35px;
+}
+
+.dashboard-title h1 {
+    font-size: 30px;
+    margin-bottom: 10px;
+}
+
+.dashboard-title p {
+    color: #9fb0d0;
+}
+
+.module-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.module-card {
+    background: #17233b;
+    border: 1px solid #34445e;
+    border-radius: 16px;
+    padding: 30px 20px;
+    text-align: center;
+    text-decoration: none;
+    color: white;
+    transition: 0.2s;
+}
+
+.module-card:hover {
+    transform: translateY(-4px);
+    border-color: #4f7cff;
+}
+
+.module-icon {
+    font-size: 45px;
+    margin-bottom: 15px;
+}
+
+.module-card h2 {
+    font-size: 20px;
+    margin-bottom: 12px;
+}
+
+.module-card p {
+    font-size: 14px;
+    color: #9fb0d0;
+}
+
+.module-button {
+    display: inline-block;
+    margin-top: 20px;
+    background: #4f7cff;
+    padding: 10px 20px;
+    border-radius: 8px;
+    color: white;
+    font-weight: bold;
+}
+
+</style>
+
+<div class="dashboard">
+
+    <div class="dashboard-title">
+        <h1>🏗️ PEJO BaustellenManager</h1>
+        <p>Digitale Baustellen- und Betriebsdokumentation</p>
+    </div>
+
+    <div class="module-grid">
+
+        <a href="{{ url_for('index') }}" class="module-card">
+            <div class="module-icon">📝</div>
+            <h2>Bautagesbericht</h2>
+            <p>Tägliche Dokumentation der Baustellenarbeiten</p>
+            <span class="module-button">Öffnen</span>
+        </a>
+
+        <div class="module-card">
+            <div class="module-icon">🚛</div>
+            <h2>Tägliche Abfahrtskontrolle</h2>
+            <p>Fahrzeugkontrolle vor Fahrtbeginn</p>
+            <span class="module-button">In Vorbereitung</span>
+        </div>
+
+        <div class="module-card">
+            <div class="module-icon">♻️</div>
+            <h2>Entsorgungsdokumentation</h2>
+            <p>Schrott, Altmaterialien und Reststoffe</p>
+            <span class="module-button">In Vorbereitung</span>
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
