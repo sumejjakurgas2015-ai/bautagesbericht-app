@@ -510,7 +510,7 @@ def login():
                 session["name"] = user["name"]
                 session["company_id"] = int(user["company_id"])
                 session["role"] = user["role"] or "worker"
-                return redirect(url_for("index"))
+                return redirect(url_for("dashboard"))
 
             flash("Falsche Firma, falscher Name oder PIN.", "error")
         finally:
