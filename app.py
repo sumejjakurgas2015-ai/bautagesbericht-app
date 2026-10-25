@@ -555,7 +555,8 @@ def abfahrtskontrolle():
 
     company_id = current_company_id()
     user_id = current_user_id()
-        if request.method == "POST":
+    
+    if request.method == "POST":
         dani = ["Mo", "Di", "Mi", "Do", "Fr", "Sa"]
         zapisi = []
 
