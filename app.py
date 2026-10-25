@@ -582,6 +582,44 @@ def abfahrtskontrolle():
                 maengel,
                 unterschrift
             ))
+         if zapisi:
+            conn = get_db()
+            cur = conn.cursor()
+
+            try:
+                for zapis in zapisi:
+                    cur.execute(
+                        """
+                        INSERT INTO abfahrtskontrollen (
+                            company_id,
+                            user_id,
+                            datum,
+                            fahrzeug,
+                            kennzeichen,
+                            fahrer,
+                            ist_ok,
+                            maengel,
+                            unterschrift
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (company_id, user_id, datum)
+                        DO NOTHING
+                        """,
+                        zapis
+                    )
+
+                conn.commit()
+                flash("Abfahrtskontrolle gespeichert!", "success")
+
+            except Exception as e:
+                conn.rollback()
+                flash(f"Fehler beim Speichern: {e}", "error")
+
+            finally:
+                cur.close()
+                conn.close()
+
+            return redirect(url_for("abfahrtskontrolle"))   
 
     return render_template("abfahrtskontrolle.html")
 @app.route("/logout")
