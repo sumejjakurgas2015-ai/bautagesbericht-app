@@ -1,4 +1,4 @@
-import os
+simport os
 import base64
 from datetime import date
 from io import BytesIO
@@ -552,6 +552,9 @@ def dashboard():
 def abfahrtskontrolle():
     if not is_logged_in():
         return redirect(url_for("login"))
+
+    company_id = current_company_id()
+    user_id = current_user_id()
 
     return render_template("abfahrtskontrolle.html")
 @app.route("/logout")
