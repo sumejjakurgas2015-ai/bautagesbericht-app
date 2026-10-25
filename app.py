@@ -555,6 +555,33 @@ def abfahrtskontrolle():
 
     company_id = current_company_id()
     user_id = current_user_id()
+        if request.method == "POST":
+        dani = ["Mo", "Di", "Mi", "Do", "Fr", "Sa"]
+        zapisi = []
+
+        for dan in dani:
+            datum = request.form.get(f"datum_{dan}")
+            fahrzeug = (request.form.get(f"fahrzeug_{dan}") or "").strip()
+            kennzeichen = (request.form.get(f"kennzeichen_{dan}") or "").strip()
+            fahrer = (request.form.get(f"fahrer_{dan}") or "").strip()
+            ist_ok = request.form.get(f"ist_ok_{dan}") == "on"
+            maengel = (request.form.get(f"maengel_{dan}") or "").strip()
+            unterschrift = request.form.get(f"signature_{dan}") or ""
+
+            if not datum:
+                continue
+
+            zapisi.append((
+                company_id,
+                user_id,
+                datum,
+                fahrzeug,
+                kennzeichen,
+                fahrer,
+                ist_ok,
+                maengel,
+                unterschrift
+            ))
 
     return render_template("abfahrtskontrolle.html")
 @app.route("/logout")
