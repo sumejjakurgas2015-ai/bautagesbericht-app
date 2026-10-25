@@ -211,4 +211,119 @@ Bei sicherheitsrelevanten Mängeln nicht losfahren!
 
     </div>
 </div>
+<script>
+let activeSignatureButton = null;
+let isDrawing = false;
+let hasSignature = false;
+
+const signatureModal = document.getElementById("signatureModal");
+const signatureCanvas = document.getElementById("signatureCanvas");
+const signatureCtx = signatureCanvas.getContext("2d");
+
+function openSignature(button) {
+    activeSignatureButton = button;
+
+    signatureModal.style.display = "flex";
+
+    signatureCanvas.width = signatureCanvas.clientWidth;
+    signatureCanvas.height = signatureCanvas.clientHeight;
+
+    signatureCtx.strokeStyle = "#000000";
+    signatureCtx.lineWidth = 2.5;
+    signatureCtx.lineCap = "round";
+    signatureCtx.lineJoin = "round";
+
+    hasSignature = false;
+
+    const saved = button.parentElement.querySelector(".signature-data").value;
+
+    if (saved) {
+        const img = new Image();
+        img.onload = function() {
+            signatureCtx.drawImage(
+                img, 0, 0,
+                signatureCanvas.width,
+                signatureCanvas.height
+            );
+            hasSignature = true;
+        };
+        img.src = saved;
+    }
+}
+
+function getSignaturePosition(event) {
+    const rect = signatureCanvas.getBoundingClientRect();
+
+    return {
+        x: (event.clientX - rect.left) *
+           (signatureCanvas.width / rect.width),
+        y: (event.clientY - rect.top) *
+           (signatureCanvas.height / rect.height)
+    };
+}
+
+signatureCanvas.addEventListener("pointerdown", function(event) {
+    isDrawing = true;
+    signatureCanvas.setPointerCapture(event.pointerId);
+
+    const pos = getSignaturePosition(event);
+
+    signatureCtx.beginPath();
+    signatureCtx.moveTo(pos.x, pos.y);
+    signatureCtx.lineTo(pos.x, pos.y);
+    signatureCtx.stroke();
+
+    hasSignature = true;
+});
+
+signatureCanvas.addEventListener("pointermove", function(event) {
+    if (!isDrawing) return;
+
+    const pos = getSignaturePosition(event);
+
+    signatureCtx.lineTo(pos.x, pos.y);
+    signatureCtx.stroke();
+});
+
+function stopDrawing() {
+    isDrawing = false;
+}
+
+signatureCanvas.addEventListener("pointerup", stopDrawing);
+signatureCanvas.addEventListener("pointercancel", stopDrawing);
+
+function clearSignature() {
+    signatureCtx.clearRect(
+        0, 0,
+        signatureCanvas.width,
+        signatureCanvas.height
+    );
+
+    hasSignature = false;
+}
+
+function saveSignature() {
+    if (!activeSignatureButton || !hasSignature) {
+        alert("Bitte unterschreiben Sie zuerst.");
+        return;
+    }
+
+    const signatureData = signatureCanvas.toDataURL("image/png");
+
+    const hiddenInput = activeSignatureButton.parentElement
+        .querySelector(".signature-data");
+
+    hiddenInput.value = signatureData;
+
+    activeSignatureButton.textContent = "✅ Unterschrieben";
+
+    closeSignature();
+}
+
+function closeSignature() {
+    signatureModal.style.display = "none";
+    isDrawing = false;
+    activeSignatureButton = null;
+}
+</script>
 {% endblock %}
