@@ -221,6 +221,29 @@ def init_db():
     add_column_if_missing(cur, "reports", "ersteller", "TEXT")
 
     reset_sequences(cur)
+    
+        # Abfahrtskontrolle - dnevne kontrole vozila
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS abfahrtskontrollen (
+            id SERIAL PRIMARY KEY,
+            company_id INTEGER NOT NULL
+                REFERENCES companies(id) ON DELETE CASCADE,
+            user_id INTEGER NOT NULL
+                REFERENCES users(id) ON DELETE CASCADE,
+            datum DATE NOT NULL,
+            fahrzeug TEXT,
+            kennzeichen TEXT,
+            fahrer TEXT,
+            ist_ok BOOLEAN DEFAULT FALSE,
+            maengel TEXT,
+            unterschrift TEXT,
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW(),
+            UNIQUE (company_id, user_id, datum)
+        )
+        """
+    )
 
     conn.commit()
     cur.close()
