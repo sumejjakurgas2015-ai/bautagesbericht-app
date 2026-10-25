@@ -555,6 +555,15 @@ def abfahrtskontrolle():
 
     company_id = current_company_id()
     user_id = current_user_id()
+
+    danas = date.today()
+
+    godina, sedmica, _ = danas.isocalendar()
+
+    izabrana_sedmica = request.args.get(
+        "kw",
+        f"{godina}-W{sedmica:02d}"
+    )
     
     if request.method == "POST":
         dani = ["Mo", "Di", "Mi", "Do", "Fr", "Sa"]
