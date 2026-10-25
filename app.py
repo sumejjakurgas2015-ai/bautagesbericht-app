@@ -631,7 +631,10 @@ def abfahrtskontrolle():
 
             return redirect(url_for("abfahrtskontrolle"))   
 
-    return render_template("abfahrtskontrolle.html")
+        return render_template(
+        "abfahrtskontrolle.html",
+        izabrana_sedmica=izabrana_sedmica
+    )
 @app.route("/logout")
 def logout():
     session.clear()
