@@ -548,7 +548,7 @@ def dashboard():
 
     return render_template("dashboard.html")
 
-@app.route("/abfahrtskontrolle")
+@app.route("/abfahrtskontrolle", methods=["GET", "POST"])
 def abfahrtskontrolle():
     if not is_logged_in():
         return redirect(url_for("login"))
