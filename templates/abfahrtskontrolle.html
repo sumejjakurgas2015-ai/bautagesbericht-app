@@ -105,18 +105,30 @@ Bei sicherheitsrelevanten Mängeln nicht losfahren!
 
 <td><strong>{{ tag }}</strong></td>
 
-<td><input type="date"></td>
-
-<td><input type="text"></td>
-
-<td><input type="text"></td>
-
-<td><input type="text"></td>
-
-<td><input type="checkbox"></td>
+<td>
+    <input type="date" name="datum_{{ tag }}">
+</td>
 
 <td>
-<input type="text" placeholder="Keine / kurze Beschreibung">
+    <input type="text" name="fahrzeug_{{ tag }}">
+</td>
+
+<td>
+    <input type="text" name="kennzeichen_{{ tag }}">
+</td>
+
+<td>
+    <input type="text" name="fahrer_{{ tag }}">
+</td>
+
+<td>
+    <input type="checkbox" name="ist_ok_{{ tag }}">
+</td>
+
+<td>
+    <input type="text"
+           name="maengel_{{ tag }}"
+           placeholder="Keine / kurze Beschreibung">
 </td>
 
 <td>
