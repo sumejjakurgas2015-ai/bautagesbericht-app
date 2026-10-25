@@ -629,12 +629,46 @@ def abfahrtskontrolle():
                 cur.close()
                 conn.close()
 
-            return redirect(url_for("abfahrtskontrolle"))   
+            return redirect(url_for("abfahrtskontrolle"))
+    try:
+        godina_kw, sedmica_kw = izabrana_sedmica.split("-W")
+        pocetak = date.fromisocalendar(
+            int(godina_kw), int(sedmica_kw), 1
+        )
+    except (ValueError, TypeError):
+        flash("Ungültige Kalenderwoche.", "error")
+        return redirect(url_for("abfahrtskontrolle"))
 
-        return render_template(
+    kraj = pocetak + timedelta(days=6)
+
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    try:
+        cur.execute(
+            """
+            SELECT datum, fahrzeug, kennzeichen,
+                   fahrer, ist_ok, maengel, unterschrift
+            FROM abfahrtskontrollen
+            WHERE company_id = %s
+              AND user_id = %s
+              AND datum BETWEEN %s AND %s
+            ORDER BY datum
+            """,
+            (company_id, user_id, pocetak, kraj)
+        )
+
+        kontrole = cur.fetchall()
+
+    finally:
+        cur.close()
+        conn.close()   
+    return render_template(
         "abfahrtskontrolle.html",
-        izabrana_sedmica=izabrana_sedmica
+        izabrana_sedmica=izabrana_sedmica,
+        kontrole=kontrole
     )
+       
 @app.route("/logout")
 def logout():
     session.clear()
