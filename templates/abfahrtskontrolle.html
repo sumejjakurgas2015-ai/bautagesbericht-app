@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+.abfahrt {
+    max-width: 1100px;
+    margin: 25px auto;
+    padding: 20px;
+}
+
+.abfahrt h1 {
+    text-align: center;
+}
+
+.abfahrt-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 25px;
+}
+
+.abfahrt-table th {
+    background: #8b1e2d;
+    color: white;
+    padding: 12px;
+    font-size: 13px;
+}
+
+.abfahrt-table td {
+    border-bottom: 2px solid #555;
+    padding: 12px 6px;
+    text-align: center;
+}
+
+.abfahrt-table input {
+    width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+.abfahrt-table input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+}
+
+.abfahrt-table input[type="date"] {
+    min-width: 125px;
+}
+
+.table-scroll {
+    overflow-x: auto;
+}
+
+.abfahrt-table {
+    min-width: 900px;
+}
+
+@media (max-width: 700px) {
+    .abfahrt {
+        padding: 10px;
+    }
+}
+</style>
+
+<div class="abfahrt">
+
+<h1>🚛 Tägliche Abfahrtskontrolle</h1>
+<p style="text-align:center;">
+PEJO Elektrotechnik GmbH – Kontrollblatt
+</p>
+
+<p>
+Vor jeder Fahrt ist das Fahrzeug auf seinen
+ordnungsgemäßen Zustand zu prüfen.
+</p>
+
+<p>
+<strong>
+Bei sicherheitsrelevanten Mängeln nicht losfahren!
+</strong>
+</p>
+
+<label>Kalenderwoche (KW):</label>
+<input type="week" id="kalenderwoche">
+
+<div class="table-scroll">
+<table class="abfahrt-table">
+
+<thead>
+<tr>
+<th>Tag</th>
+<th>Datum</th>
+<th>Fahrzeug / Anhänger</th>
+<th>Kennz.</th>
+<th>Fahrer</th>
+<th>i.O.</th>
+<th>Mängel</th>
+<th>Unterschrift</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for tag in ["Mo", "Di", "Mi", "Do", "Fr", "Sa"] %}
+<tr>
+
+<td><strong>{{ tag }}</strong></td>
+
+<td><input type="date"></td>
+
+<td><input type="text"></td>
+
+<td><input type="text"></td>
+
+<td><input type="text"></td>
+
+<td><input type="checkbox"></td>
+
+<td>
+<input type="text" placeholder="Keine / kurze Beschreibung">
+</td>
+
+<td>
+<input type="text" placeholder="Unterschrift">
+</td>
+
+</tr>
+{% endfor %}
+
+</tbody>
+</table>
+</div>
+
+</div>
+
+{% endblock %}
