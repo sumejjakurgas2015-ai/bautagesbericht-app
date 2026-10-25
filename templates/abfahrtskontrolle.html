@@ -120,7 +120,16 @@ Bei sicherheitsrelevanten Mängeln nicht losfahren!
 </td>
 
 <td>
-<input type="text" placeholder="Unterschrift">
+    <button type="button"
+            class="signature-button"
+            data-tag="{{ tag }}"
+            onclick="openSignature(this)">
+        ✍️ Unterschreiben
+    </button>
+
+    <input type="hidden"
+           class="signature-data"
+           name="signature_{{ tag }}">
 </td>
 
 </tr>
