@@ -82,13 +82,14 @@ Bei sicherheitsrelevanten Mängeln nicht losfahren!
 <form method="POST" action="{{ url_for('abfahrtskontrolle') }}">
 
     <label for="kalenderwoche">Kalenderwoche (KW):</label>
-    <input type="week"
-           id="kalenderwoche"
-           name="kalenderwoche"
-           required>
+    
 <div class="table-scroll">
 <table class="abfahrt-table">
-
+<input type="week"
+       id="kalenderwoche"
+       name="kalenderwoche"
+       value="{{ izabrana_sedmica }}"
+       required>
 <thead>
 <tr>
 <th>Tag</th>
