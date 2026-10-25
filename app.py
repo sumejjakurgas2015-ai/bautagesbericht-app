@@ -525,7 +525,12 @@ def dashboard():
 
     return render_template("dashboard.html")
 
+@app.route("/abfahrtskontrolle")
+def abfahrtskontrolle():
+    if not is_logged_in():
+        return redirect(url_for("login"))
 
+    return render_template("abfahrtskontrolle.html")
 @app.route("/logout")
 def logout():
     session.clear()
