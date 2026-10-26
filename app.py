@@ -560,10 +560,11 @@ def abfahrtskontrolle():
 
     godina, sedmica, _ = danas.isocalendar()
 
-    izabrana_sedmica = request.args.get(
-        "kw",
-        f"{godina}-W{sedmica:02d}"
-    )
+    izabrana_sedmica = (
+    request.form.get("kalenderwoche")
+    if request.method == "POST"
+    else request.args.get("kw")
+) or f"{godina}-W{sedmica:02d}"
     
     if request.method == "POST":
         dani = ["Mo", "Di", "Mi", "Do", "Fr", "Sa"]
