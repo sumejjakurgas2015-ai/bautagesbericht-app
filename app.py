@@ -646,17 +646,17 @@ WHERE abfahrtskontrollen.unterschrift IS NULL
                     else:
                         broj_zakljucanih += 1
 
-            conn.commit()
+                conn.commit()
              
-            if broj_sacuvanih > 0:
-                flash(f"{broj_sacuvanih} Abfahrtskontrolle(n) gespeichert.", "success")
+                if broj_sacuvanih > 0:
+                    flash(f"{broj_sacuvanih} Abfahrtskontrolle(n) gespeichert.", "success")
 
-            if broj_zakljucanih > 0:
-                flash(f"{broj_zakljucanih} bereits unterschriebene Kontrolle(n) wurden nicht verändert.", "warning")
+                if broj_zakljucanih > 0:
+                    flash(f"{broj_zakljucanih} bereits unterschriebene Kontrolle(n) wurden nicht verändert.", "warning")
 
         except Exception as e:
-                conn.rollback()
-                flash(f"Fehler beim Speichern: {e}", "error")
+            conn.rollback()
+            flash(f"Fehler beim Speichern: {e}", "error")
 
             finally:
                 cur.close()
