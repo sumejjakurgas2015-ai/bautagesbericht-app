@@ -599,7 +599,7 @@ def abfahrtskontrolle():
                 maengel,
                 unterschrift
             ))
-         if zapisi:
+        if zapisi:
             conn = get_db()
             cur = conn.cursor()
 
