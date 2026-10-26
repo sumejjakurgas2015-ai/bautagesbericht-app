@@ -613,7 +613,19 @@ def abfahrtskontrolle():
                         )
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                         ON CONFLICT (company_id, user_id, datum)
-                        DO NOTHING
+DO UPDATE SET
+    fahrzeug = EXCLUDED.fahrzeug,
+    kennzeichen = EXCLUDED.kennzeichen,
+    fahrer = EXCLUDED.fahrer,
+    ist_ok = EXCLUDED.ist_ok,
+    maengel = EXCLUDED.maengel,
+    unterschrift = CASE
+        WHEN EXCLUDED.unterschrift IS NOT NULL
+             AND EXCLUDED.unterschrift <> ''
+        THEN EXCLUDED.unterschrift
+        ELSE abfahrtskontrollen.unterschrift
+    END,
+    updated_at = NOW()
                         """,
                         zapis
                     )
