@@ -620,13 +620,15 @@ DO UPDATE SET
     fahrer = EXCLUDED.fahrer,
     ist_ok = EXCLUDED.ist_ok,
     maengel = EXCLUDED.maengel,
-    unterschrift = CASE
+unterschrift = CASE
     WHEN abfahrtskontrollen.unterschrift IS NOT NULL
          AND abfahrtskontrollen.unterschrift <> ''
     THEN abfahrtskontrollen.unterschrift
     ELSE EXCLUDED.unterschrift
 END,
     updated_at = NOW()
+WHERE abfahrtskontrollen.unterschrift IS NULL
+   OR abfahrtskontrollen.unterschrift = ''
                         """,
                         zapis
                     )
