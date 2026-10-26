@@ -659,15 +659,27 @@ def abfahrtskontrolle():
         )
 
         kontrole = cur.fetchall()
+        kontrole_po_danima = {}
 
+        oznake_dana = ["Mo", "Di", "Mi", "Do", "Fr", "Sa"]
+
+        for kontrola in kontrole:
+            broj_dana = kontrola["datum"].weekday()
+
+            if broj_dana < 6:
+                oznaka = oznake_dana[broj_dana]
+                kontrole_po_danima[oznaka] = kontrola
     finally:
         cur.close()
-        conn.close()   
-    return render_template(
+        conn.close()
+        
+     return render_template(
         "abfahrtskontrolle.html",
         izabrana_sedmica=izabrana_sedmica,
-        kontrole=kontrole
+        kontrole=kontrole,
+        kontrole_po_danima=kontrole_po_danima
     )
+    
        
 @app.route("/logout")
 def logout():
