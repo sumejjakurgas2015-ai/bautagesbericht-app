@@ -244,6 +244,12 @@ def init_db():
         )
         """
     )
+    cur.execute(
+    """
+    ALTER TABLE abfahrtskontrollen
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()
+    """
+)
 
     conn.commit()
     cur.close()
