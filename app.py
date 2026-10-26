@@ -598,6 +598,9 @@ def abfahrtskontrolle():
             cur = conn.cursor()
 
             try:
+                broj_sacuvanih = 0
+                broj_zakljucanih = 0
+                
                 for zapis in zapisi:
                     cur.execute(
                         """
@@ -632,11 +635,20 @@ WHERE abfahrtskontrollen.unterschrift IS NULL
                         """,
                         zapis
                     )
+            if cur.rowcount == 1:
+                broj_sacuvanih += 1
+            else:
+                broj_zakljucanih += 1
 
-                conn.commit()
-                flash("Abfahrtskontrolle gespeichert!", "success")
+            conn.commit()
+             
+            if broj_sacuvanih > 0:
+                flash(f"{broj_sacuvanih} Abfahrtskontrolle(n) gespeichert.", "success")
 
-            except Exception as e:
+            if broj_zakljucanih > 0:
+                flash(f"{broj_zakljucanih} bereits unterschriebene Kontrolle(n) wurden nicht verändert.", "warning")
+
+        except Exception as e:
                 conn.rollback()
                 flash(f"Fehler beim Speichern: {e}", "error")
 
