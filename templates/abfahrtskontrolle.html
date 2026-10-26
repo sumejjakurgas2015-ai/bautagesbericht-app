@@ -106,47 +106,67 @@ Bei sicherheitsrelevanten Mängeln nicht losfahren!
 <tbody>
 
 {% for tag in ["Mo", "Di", "Mi", "Do", "Fr", "Sa"] %}
+    
+{% set kontrola = kontrole_po_danima.get(tag, {}) %}
+    
 <tr>
 
 <td><strong>{{ tag }}</strong></td>
 
 <td>
-    <input type="date" name="datum_{{ tag }}">
-</td>
-
-<td>
-    <input type="text" name="fahrzeug_{{ tag }}">
-</td>
-
-<td>
-    <input type="text" name="kennzeichen_{{ tag }}">
-</td>
-
-<td>
-    <input type="text" name="fahrer_{{ tag }}">
-</td>
-
-<td>
-    <input type="checkbox" name="ist_ok_{{ tag }}">
+    <input type="date"
+       name="datum_{{ tag }}"
+       value="{{ kontrola['datum'].isoformat() if kontrola.get('datum') else '' }}"> 
 </td>
 
 <td>
     <input type="text"
-           name="maengel_{{ tag }}"
-           placeholder="Keine / kurze Beschreibung">
+       name="fahrzeug_{{ tag }}"
+       value="{{ kontrola.get('fahrzeug') or '' }}">
+</td>
+
+<td>
+    <input type="text"
+       name="kennzeichen_{{ tag }}"
+       value="{{ kontrola.get('kennzeichen') or '' }}">
+</td>
+
+<td>
+    <input type="text"
+       name="fahrer_{{ tag }}"
+       value="{{ kontrola.get('fahrer') or '' }}">
+</td>
+
+<td>
+    <input type="checkbox"
+       name="ist_ok_{{ tag }}"
+       {% if kontrola.get('ist_ok') %}checked{% endif %}>
+</td>
+
+<td>
+    <input type="text"
+       name="maengel_{{ tag }}"
+       value="{{ kontrola.get('maengel') or '' }}"
+       placeholder="Keine / kurze Beschreibung">
 </td>
 
 <td>
     <button type="button"
-            class="signature-button"
-            data-tag="{{ tag }}"
-            onclick="openSignature(this)">
+        class="signature-button"
+        data-tag="{{ tag }}"
+        onclick="openSignature(this)">
+    {% if kontrola.get('unterschrift') %}
+        ✅ Unterschrieben
+    {% else %}
         ✍️ Unterschreiben
-    </button>
+    {% endif %}
+</button>
 
     <input type="hidden"
-           class="signature-data"
-           name="signature_{{ tag }}">
+       class="signature-data"
+       name="signature_{{ tag }}"
+       value="{{ kontrola.get('unterschrift') or '' }}">
+    
 </td>
 
 </tr>
