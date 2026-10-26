@@ -83,13 +83,16 @@ Bei sicherheitsrelevanten Mängeln nicht losfahren!
 
     <label for="kalenderwoche">Kalenderwoche (KW):</label>
     
-<div class="table-scroll">
-<table class="abfahrt-table">
+
 <input type="week"
        id="kalenderwoche"
        name="kalenderwoche"
        value="{{ izabrana_sedmica }}"
+       onchange="window.location.href='{{ url_for('abfahrtskontrolle') }}?kw=' + encodeURIComponent(this.value)"
        required>
+    
+<div class="table-scroll">
+<table class="abfahrt-table">
 <thead>
 <tr>
 <th>Tag</th>
