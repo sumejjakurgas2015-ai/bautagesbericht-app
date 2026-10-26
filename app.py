@@ -621,11 +621,11 @@ DO UPDATE SET
     ist_ok = EXCLUDED.ist_ok,
     maengel = EXCLUDED.maengel,
     unterschrift = CASE
-        WHEN EXCLUDED.unterschrift IS NOT NULL
-             AND EXCLUDED.unterschrift <> ''
-        THEN EXCLUDED.unterschrift
-        ELSE abfahrtskontrollen.unterschrift
-    END,
+    WHEN abfahrtskontrollen.unterschrift IS NOT NULL
+         AND abfahrtskontrollen.unterschrift <> ''
+    THEN abfahrtskontrollen.unterschrift
+    ELSE EXCLUDED.unterschrift
+END,
     updated_at = NOW()
                         """,
                         zapis
