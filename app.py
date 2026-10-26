@@ -641,7 +641,12 @@ DO UPDATE SET
                 cur.close()
                 conn.close()
 
-            return redirect(url_for("abfahrtskontrolle"))
+           return redirect(
+    url_for(
+        "abfahrtskontrolle",
+        kw=request.form.get("kalenderwoche") or izabrana_sedmica
+    )
+) 
     try:
         godina_kw, sedmica_kw = izabrana_sedmica.split("-W")
         pocetak = date.fromisocalendar(
