@@ -641,10 +641,10 @@ WHERE abfahrtskontrollen.unterschrift IS NULL
                         """,
                         zapis
                     )
-            if cur.rowcount == 1:
-                broj_sacuvanih += 1
-            else:
-                broj_zakljucanih += 1
+                    if cur.rowcount == 1:
+                        broj_sacuvanih += 1
+                    else:
+                        broj_zakljucanih += 1
 
             conn.commit()
              
