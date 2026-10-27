@@ -707,12 +707,12 @@ WHERE abfahrtskontrollen.unterschrift IS NULL
             if broj_dana < 6:
                 oznaka = oznake_dana[broj_dana]
                 kontrole_po_danima[oznaka] = kontrola
-        except Exception as e:
+    except Exception as e:
              flash("Fehler beim Laden der Abfahrtskontrolle. Bitte erneut versuchen.", "error")
              kontrole = []
              kontrole_po_danima = {}
     
-        finally:
+    finally:
             cur.close()
             conn.close()
         
