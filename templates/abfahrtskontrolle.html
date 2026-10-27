@@ -120,7 +120,7 @@ Bei sicherheitsrelevanten Mängeln nicht losfahren!
     <input type="date"
        name="datum_{{ tag }}"
       value="{{ kontrola['datum'].isoformat() if kontrola.get('datum') else '' }}"
-{% if kontrola.get('unterschrift') %}disabled{% endif %}> 
+{% if kontrola.get('unterschrift') %}readonly style="background-color: #ffffff; color: #000000; opacity: 1;"{% endif %}>
 </td>
 
 <td>
