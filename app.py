@@ -707,16 +707,16 @@ WHERE abfahrtskontrollen.unterschrift IS NULL
             if broj_dana < 6:
                 oznaka = oznake_dana[broj_dana]
                 kontrole_po_danima[oznaka] = kontrola
-    except Exception as e:
-        flash("Fehler beim Laden der Abfahrtskontrolle. Bitte erneut versuchen.", "error")
-        kontrole = []
-        kontrole_po_danima = {}
+        except Exception as e:
+             flash("Fehler beim Laden der Abfahrtskontrolle. Bitte erneut versuchen.", "error")
+             kontrole = []
+             kontrole_po_danima = {}
     
-    finally:
-        cur.close()
-        conn.close()
+        finally:
+            cur.close()
+            conn.close()
         
-     return render_template(
+    return render_template(
         "abfahrtskontrolle.html",
         izabrana_sedmica=izabrana_sedmica,
         kontrole=kontrole,
