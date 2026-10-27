@@ -93,6 +93,14 @@
     <p>Fahrzeugkontrolle vor Fahrtbeginn</p>
     <span class="module-button">Öffnen</span>
 </a>
+{% if session.get('role') == 'admin' %}
+<a href="{{ url_for('admin_abfahrtskontrollen') }}" class="module-card">
+    <div class="module-icon">📋</div>
+    <h2>Alle Abfahrtskontrollen</h2>
+    <p>Kontrollblätter aller Fahrer ansehen</p>
+    <span class="module-button">Öffnen</span>
+</a>
+{% endif %} 
 
         <div class="module-card">
             <div class="module-icon">♻️</div>
