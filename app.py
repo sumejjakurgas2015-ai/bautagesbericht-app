@@ -553,6 +553,15 @@ def dashboard():
         return redirect(url_for("login"))
 
     return render_template("dashboard.html")
+@app.route("/admin/abfahrtskontrollen")
+def admin_abfahrtskontrollen():
+    if not is_logged_in():
+        return redirect(url_for("login"))
+
+    if not is_admin():
+        return "Zugriff verweigert", 403
+
+    return "Admin Abfahrtskontrollen – Zugriff OK"    
 
 @app.route("/abfahrtskontrolle", methods=["GET", "POST"])
 def abfahrtskontrolle():
