@@ -654,9 +654,9 @@ WHERE abfahrtskontrollen.unterschrift IS NULL
                 if broj_zakljucanih > 0:
                     flash(f"{broj_zakljucanih} bereits unterschriebene Kontrolle(n) wurden nicht verändert.", "warning")
 
-        except Exception as e:
-            conn.rollback()
-            flash(f"Fehler beim Speichern: {e}", "error")
+            except Exception as e:
+                conn.rollback()
+                flash(f"Fehler beim Speichern: {e}", "error")
 
             finally:
                 cur.close()
