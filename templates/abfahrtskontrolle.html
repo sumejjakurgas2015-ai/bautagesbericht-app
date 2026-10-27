@@ -125,39 +125,45 @@ Bei sicherheitsrelevanten Mängeln nicht losfahren!
 <td>
     <input type="text"
        name="fahrzeug_{{ tag }}"
-       value="{{ kontrola.get('fahrzeug') or '' }}">
+       value="{{ kontrola.get('fahrzeug') or '' }}"
+{% if kontrola.get('unterschrift') %}readonly{% endif %}>
 </td>
 
 <td>
     <input type="text"
        name="kennzeichen_{{ tag }}"
-       value="{{ kontrola.get('kennzeichen') or '' }}">
+       value="{{ kontrola.get('kennzeichen') or '' }}"
+{% if kontrola.get('unterschrift') %}readonly{% endif %}>
 </td>
 
 <td>
     <input type="text"
        name="fahrer_{{ tag }}"
-       value="{{ kontrola.get('fahrer') or '' }}">
+       value="{{ kontrola.get('fahrer') or '' }}"
+{% if kontrola.get('unterschrift') %}readonly{% endif %}>
 </td>
 
 <td>
     <input type="checkbox"
        name="ist_ok_{{ tag }}"
-       {% if kontrola.get('ist_ok') %}checked{% endif %}>
+       {% if kontrola.get('ist_ok') %}checked{% endif %}
+{% if kontrola.get('unterschrift') %}disabled{% endif %}>
 </td>
 
 <td>
     <input type="text"
        name="maengel_{{ tag }}"
        value="{{ kontrola.get('maengel') or '' }}"
-       placeholder="Keine / kurze Beschreibung">
+       placeholder="Keine / kurze Beschreibung"
+{% if kontrola.get('unterschrift') %}readonly{% endif %}>
 </td>
 
 <td>
     <button type="button"
         class="signature-button"
         data-tag="{{ tag }}"
-        onclick="openSignature(this)">
+       onclick="openSignature(this)"
+{% if kontrola.get('unterschrift') %}disabled{% endif %}>
     {% if kontrola.get('unterschrift') %}
         ✅ Unterschrieben
     {% else %}
