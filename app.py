@@ -569,7 +569,7 @@ def admin_abfahrtskontrollen():
     try:
         cur.execute(
             """
-            SELECT a.datum, a.fahrzeug, a.kennzeichen,
+           SELECT a.id, a.datum, a.fahrzeug, a.kennzeichen,
                    a.fahrer, a.ist_ok, a.maengel,
                    a.unterschrift
             FROM abfahrtskontrollen a
