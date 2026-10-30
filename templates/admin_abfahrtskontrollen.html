@@ -62,7 +62,9 @@
                     <th>i.O.</th>
                     <th>Mängel</th>
                     <th>Unterschrift</th>
+                    <th>PDF</th>
                 </tr>
+                
             </thead>
             <tbody>
                 {% for kontrola in kontrole %}
@@ -89,11 +91,20 @@
 {% else %}
     ✍️ Nicht unterschrieben
 {% endif %}
-                    </td>
-                </tr>
+</td>
+
+<td>
+    <a href="{{ url_for('admin_abfahrtskontrolle_pdf', kontrola_id=kontrola['id']) }}"
+       style="color: white; background: #4f7cff; padding: 10px; border-radius: 5px; text-decoration: none;">
+        📄 PDF herunterladen
+    </a>
+</td>
+
+</tr>
+   
                 {% else %}
                 <tr>
-                    <td colspan="7">Keine Kontrollen vorhanden.</td>
+                    <td colspan="8">Keine Kontrollen vorhanden.</td>
                 </tr>
                 {% endfor %}
             </tbody>
