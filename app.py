@@ -561,7 +561,30 @@ def admin_abfahrtskontrollen():
     if not is_admin():
         return "Zugriff verweigert", 403
 
-    return "Admin Abfahrtskontrollen – Zugriff OK"    
+    company_id = current_company_id()
+
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    try:
+        cur.execute(
+            """
+            SELECT a.datum, a.fahrzeug, a.kennzeichen,
+                   a.fahrer, a.ist_ok, a.maengel,
+                   a.unterschrift
+            FROM abfahrtskontrollen a
+            WHERE a.company_id = %s
+            ORDER BY a.datum DESC
+            """,
+            (company_id,)
+        )
+        kontrole = cur.fetchall()
+    finally:
+        cur.close()
+        conn.close()
+    
+
+    return f"Admin Abfahrtskontrollen – {len(kontrole)} Kontrollen gefunden"    
 
 @app.route("/abfahrtskontrolle", methods=["GET", "POST"])
 def abfahrtskontrolle():
