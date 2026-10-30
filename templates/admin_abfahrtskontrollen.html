@@ -81,10 +81,14 @@
                     <td>{{ kontrola['maengel'] or '' }}</td>
                     <td>
                         {% if kontrola['unterschrift'] %}
-                            ✅ Unterschrieben
-                        {% else %}
-                            ✍️ Nicht unterschrieben
-                        {% endif %}
+    <img
+        src="{{ kontrola['unterschrift'] }}"
+        alt="Unterschrift"
+        style="max-width: 180px; max-height: 80px; background: white; border-radius: 5px; padding: 5px;"
+    >
+{% else %}
+    ✍️ Nicht unterschrieben
+{% endif %}
                     </td>
                 </tr>
                 {% else %}
