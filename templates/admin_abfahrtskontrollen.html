@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alle Abfahrtskontrollen</title>
+    <style>
+        body {
+            background: #0f172a;
+            color: white;
+            font-family: Arial, sans-serif;
+            padding: 25px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #1e293b;
+        }
+
+        th, td {
+            border: 1px solid #475569;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background: #881c2b;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        a {
+            color: #93c5fd;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>📋 Alle Abfahrtskontrollen</h1>
+
+    <p>
+        <a href="{{ url_for('dashboard') }}">← Zurück zum Dashboard</a>
+    </p>
+
+    <p>Gefundene Kontrollen: {{ kontrole|length }}</p>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Datum</th>
+                    <th>Fahrzeug</th>
+                    <th>Kennzeichen</th>
+                    <th>Fahrer</th>
+                    <th>i.O.</th>
+                    <th>Mängel</th>
+                    <th>Unterschrift</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for kontrola in kontrole %}
+                <tr>
+                    <td>{{ kontrola['datum'].strftime('%d.%m.%Y') }}</td>
+                    <td>{{ kontrola['fahrzeug'] or '' }}</td>
+                    <td>{{ kontrola['kennzeichen'] or '' }}</td>
+                    <td>{{ kontrola['fahrer'] or '' }}</td>
+                    <td>
+                        {% if kontrola['ist_ok'] %}
+                            ✅
+                        {% else %}
+                            ❌
+                        {% endif %}
+                    </td>
+                    <td>{{ kontrola['maengel'] or '' }}</td>
+                    <td>
+                        {% if kontrola['unterschrift'] %}
+                            ✅ Unterschrieben
+                        {% else %}
+                            ✍️ Nicht unterschrieben
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7">Keine Kontrollen vorhanden.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</body>
+</html>
