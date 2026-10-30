@@ -584,7 +584,86 @@ def admin_abfahrtskontrollen():
         conn.close()
     
 
-    return render_template("admin_abfahrtskontrollen.html", kontrole=kontrole)    
+    return render_template("admin_abfahrtskontrollen.html", kontrole=kontrole)
+
+@app.route("/admin/abfahrtskontrollen/pdf/<int:kontrola_id>")
+def admin_abfahrtskontrolle_pdf(kontrola_id):
+    if not is_logged_in():
+        return redirect(url_for("login"))
+
+    if not is_admin():
+        return "Zugriff verweigert", 403
+    company_id = current_company_id()
+
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    try:
+        cur.execute(
+            """
+            SELECT id, datum, fahrzeug, kennzeichen,
+                   fahrer, ist_ok, maengel, unterschrift
+            FROM abfahrtskontrollen
+            WHERE id = %s AND company_id = %s
+            """,
+            (kontrola_id, company_id)
+        )
+        kontrola = cur.fetchone()
+    finally:
+        cur.close()
+        conn.close()
+    if not kontrola:
+        return "Kontrolle nicht gefunden", 404
+
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+
+    p.setTitle("Taegliche Abfahrtskontrolle")
+
+    p.setFont("Helvetica-Bold", 18)
+    p.drawString(50, height - 60, "Taegliche Abfahrtskontrolle")
+
+    p.setFont("Helvetica", 11)
+    p.drawString(50, height - 100, "PEJO Elektrotechnik GmbH")
+
+    p.setFont("Helvetica", 11)
+
+    p.drawString(50, height - 150, f"Datum: {kontrola['datum'].strftime('%d.%m.%Y')}")
+    p.drawString(50, height - 175, f"Fahrzeug: {pdf_text(kontrola['fahrzeug'] or '')}")
+    p.drawString(50, height - 200, f"Kennzeichen: {pdf_text(kontrola['kennzeichen'] or '')}")
+    p.drawString(50, height - 225, f"Fahrer: {pdf_text(kontrola['fahrer'] or '')}")
+
+    status = "Ja" if kontrola["ist_ok"] else "Nein"
+
+    p.drawString(50, height - 260, f"Fahrzeug in Ordnung: {status}")
+
+    maengel = pdf_text(kontrola["maengel"] or "Keine")
+    p.drawString(50, height - 285, f"Maengel: {maengel[:75]}")
+
+    p.setFont("Helvetica-Bold", 11)
+    p.drawString(50, height - 340, "Unterschrift des Fahrers:")
+
+    draw_signature_on_pdf(
+        p,
+        kontrola["unterschrift"],
+        50,
+        height - 430,
+        width=180,
+        height=70
+    )
+
+    p.showPage()
+    p.save()
+
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f"abfahrtskontrolle_{kontrola_id}.pdf",
+        mimetype="application/pdf",
+    )
 
 @app.route("/abfahrtskontrolle", methods=["GET", "POST"])
 def abfahrtskontrolle():
