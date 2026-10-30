@@ -256,7 +256,7 @@ def init_db():
     conn.close()
 
 
-init_db()
+# init_db()
 
 
 def is_logged_in():
