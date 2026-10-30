@@ -584,7 +584,7 @@ def admin_abfahrtskontrollen():
         conn.close()
     
 
-    return f"Admin Abfahrtskontrollen – {len(kontrole)} Kontrollen gefunden"    
+    return render_template("admin_abfahrtskontrollen.html", kontrole=kontrole)    
 
 @app.route("/abfahrtskontrolle", methods=["GET", "POST"])
 def abfahrtskontrolle():
