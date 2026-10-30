@@ -239,8 +239,7 @@ def init_db():
             maengel TEXT,
             unterschrift TEXT,
             created_at TIMESTAMP DEFAULT NOW(),
-            updated_at TIMESTAMP DEFAULT NOW(),
-            UNIQUE (company_id, user_id, datum)
+           updated_at TIMESTAMP DEFAULT NOW()
         )
         """
     )
