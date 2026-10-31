@@ -217,7 +217,8 @@ Bei sicherheitsrelevanten Mängeln nicht losfahren!
     {% endfor %}
 </div>
 {% endif %}
- <input type="hidden" id="extraVehicleCount" name="extraVehicleCount" value="0">   
+ <input type="hidden" id="extraVehicleCount" name="extraVehicleCount" value="0">
+ <input type="hidden" id="formSubmissionId" name="formSubmissionId" value="{{ form_submission_id }}">  
  <div id="additionalVehicles"></div>   
  <div style="text-align:center; margin-top:15px;">
     <button type="button" id="addVehicleButton"
