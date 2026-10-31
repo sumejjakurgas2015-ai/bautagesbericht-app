@@ -211,7 +211,8 @@ Bei sicherheitsrelevanten Mängeln nicht losfahren!
     </div>
     {% endfor %}
 </div>
-{% endif %}   
+{% endif %}
+ <input type="hidden" id="extraVehicleCount" name="extraVehicleCount" value="0">   
  <div id="additionalVehicles"></div>   
  <div style="text-align:center; margin-top:15px;">
     <button type="button" id="addVehicleButton"
@@ -427,6 +428,7 @@ function closeSignature() {
 
 document.getElementById("addVehicleButton").addEventListener("click", function () {
     extraVehicleCount++;
+    document.getElementById("extraVehicleCount").value = extraVehicleCount;
 
     const number = extraVehicleCount;
     const container = document.getElementById("additionalVehicles");
