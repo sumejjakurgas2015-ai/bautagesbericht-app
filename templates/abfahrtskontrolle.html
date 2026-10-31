@@ -113,8 +113,13 @@ Bei sicherheitsrelevanten Mängeln nicht losfahren!
 {% set kontrola = kontrole_po_danima.get(tag, {}) %}
     
 <tr>
-
-<td><strong>{{ tag }}</strong></td>
+   
+<td>
+    <strong>{{ tag }}</strong>
+    <input type="hidden"
+           name="kontrola_id_{{ tag }}"
+           value="{{ kontrola.get('id') or '' }}">
+</td>
 
 <td>
     <input type="date"
