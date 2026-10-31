@@ -825,15 +825,16 @@ def abfahrtskontrolle():
                                 kennzeichen,
                                 fahrer,
                                 ist_ok,
-                                maengel,
-                                unterschrift
+                            maengel,
+                            unterschrift,
+                            submission_id
                             )
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                             """,
-                            (
-                                company_id,
-                                user_id
-                            ) + podaci
+                           (
+                             company_id,
+                             user_id
+                           ) + podaci + (submission_id,)
                         )
 
                     if cur.rowcount == 1:
