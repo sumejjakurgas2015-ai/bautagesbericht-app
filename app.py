@@ -694,6 +694,7 @@ def abfahrtskontrolle():
         dani = ["Mo", "Di", "Mi", "Do", "Fr", "Sa"]
         zapisi = []
         id_kontrole = {}
+        form_submission_id = (request.form.get("formSubmissionId") or "").strip()
         
         for dan in dani:
             id_kontrole[dan] = request.form.get(f"kontrola_id_{dan}") or None
