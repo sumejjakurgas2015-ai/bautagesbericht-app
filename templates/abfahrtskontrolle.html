@@ -211,6 +211,16 @@ Bei sicherheitsrelevanten Mängeln nicht losfahren!
              style="max-width:250px; background:white; border:1px solid #ccc;">
         {% else %}
         <p>⚠️ Noch nicht unterschrieben</p>
+<div>
+    <button type="button"
+            class="signature-button"
+            onclick="openSignature(this)">
+        ✍️ Unterschreiben
+    </button>
+    <input type="hidden"
+           class="signature-data"
+           name="existing_signature_{{ kontrola['id'] }}">
+</div>
         {% endif %}
 
     </div>
