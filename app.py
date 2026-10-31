@@ -698,8 +698,11 @@ def abfahrtskontrolle():
             maengel = (request.form.get(f"maengel_{dan}") or "").strip()
             unterschrift = request.form.get(f"signature_{dan}") or ""
 
-            if not datum:
-                continue
+ if not datum:
+    continue
+
+ if not id_kontrole[dan] and not fahrzeug and not kennzeichen and not fahrer:
+    continue
 
             zapisi.append((
                 id_kontrole[dan],
@@ -726,6 +729,9 @@ def abfahrtskontrolle():
 
             if not datum:
                 continue
+                
+            if not fahrzeug and not kennzeichen and not fahrer:
+                continue   
 
             zapisi.append((
                 None,
@@ -747,44 +753,82 @@ def abfahrtskontrolle():
                 broj_sacuvanih = 0
                 broj_zakljucanih = 0
                 
-                for zapis in zapisi:
-                    cur.execute(
-                        """
-                        INSERT INTO abfahrtskontrollen (
-                            company_id,
-                            user_id,
-                            datum,
-                            fahrzeug,
-                            kennzeichen,
-                            fahrer,
-                            ist_ok,
-                            maengel,
-                            unterschrift
-                        )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        ON CONFLICT (company_id, user_id, datum)
-DO UPDATE SET
-    fahrzeug = EXCLUDED.fahrzeug,
-    kennzeichen = EXCLUDED.kennzeichen,
-    fahrer = EXCLUDED.fahrer,
-    ist_ok = EXCLUDED.ist_ok,
-    maengel = EXCLUDED.maengel,
-unterschrift = CASE
-    WHEN abfahrtskontrollen.unterschrift IS NOT NULL
-         AND abfahrtskontrollen.unterschrift <> ''
-    THEN abfahrtskontrollen.unterschrift
-    ELSE EXCLUDED.unterschrift
-END,
-    updated_at = NOW()
-WHERE abfahrtskontrollen.unterschrift IS NULL
-   OR abfahrtskontrollen.unterschrift = ''
-                        """,
-                        zapis
+               
+                    for zapis in zapisi:
+                    (
+                        kontrola_id,
+                        zapis_company_id,
+                        zapis_user_id,
+                        datum,
+                        fahrzeug,
+                        kennzeichen,
+                        fahrer,
+                        ist_ok,
+                        maengel,
+                        unterschrift
+                    ) = zapis
+
+                    podaci = (
+                        datum,
+                        fahrzeug,
+                        kennzeichen,
+                        fahrer,
+                        ist_ok,
+                        maengel,
+                        unterschrift
                     )
+
+                    if kontrola_id:
+                        cur.execute(
+                            """
+                            UPDATE abfahrtskontrollen
+                            SET datum = %s,
+                                fahrzeug = %s,
+                                kennzeichen = %s,
+                                fahrer = %s,
+                                ist_ok = %s,
+                                maengel = %s,
+                                unterschrift = %s,
+                                updated_at = NOW()
+                            WHERE id = %s
+                              AND company_id = %s
+                              AND user_id = %s
+                              AND (unterschrift IS NULL OR unterschrift = '')
+                            """,
+                            podaci + (
+                                kontrola_id,
+                                company_id,
+                                user_id
+                            )
+                        )
+
+                    else:
+                        cur.execute(
+                            """
+                            INSERT INTO abfahrtskontrollen (
+                                company_id,
+                                user_id,
+                                datum,
+                                fahrzeug,
+                                kennzeichen,
+                                fahrer,
+                                ist_ok,
+                                maengel,
+                                unterschrift
+                            )
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            """,
+                            (
+                                company_id,
+                                user_id
+                            ) + podaci
+                        )
+
                     if cur.rowcount == 1:
                         broj_sacuvanih += 1
                     else:
                         broj_zakljucanih += 1
+                   
 
                 conn.commit()
              
