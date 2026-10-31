@@ -912,13 +912,15 @@ def abfahrtskontrolle():
     finally:
             cur.close()
             conn.close()
+    form_submission_id = str(uuid.uuid4())   
         
     return render_template(
         "abfahrtskontrolle.html",
         izabrana_sedmica=izabrana_sedmica,
         kontrole=kontrole,
         kontrole_po_danima=kontrole_po_danima,
-        dodatne_kontrole=dodatne_kontrole
+        dodatne_kontrole=dodatne_kontrole,
+        form_submission_id=form_submission_id
     )
     
        
