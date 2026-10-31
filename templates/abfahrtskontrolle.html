@@ -396,8 +396,53 @@ function closeSignature() {
     isDrawing = false;
     activeSignatureButton = null;
 }
-    document.getElementById("addVehicleButton").addEventListener("click", function () {
-    alert("Funktion zum Hinzufügen weiterer Fahrzeuge wird vorbereitet.");
+  let extraVehicleCount = 0;
+
+document.getElementById("addVehicleButton").addEventListener("click", function () {
+    extraVehicleCount++;
+
+    const number = extraVehicleCount;
+    const container = document.getElementById("additionalVehicles");
+
+    const row = document.createElement("div");
+    row.style.cssText = "border:1px solid #aaa; border-radius:8px; padding:15px; margin-top:15px;";
+
+    row.innerHTML = `
+        <h3>🚛 Zusätzliches Fahrzeug ${number}</h3>
+
+        <label>Datum:</label>
+        <input type="date" name="datum_extra_${number}" required>
+
+        <label>Fahrzeug:</label>
+        <input type="text" name="fahrzeug_extra_${number}" required>
+
+        <label>Kennzeichen:</label>
+        <input type="text" name="kennzeichen_extra_${number}">
+
+        <label>Fahrer:</label>
+        <input type="text" name="fahrer_extra_${number}">
+
+        <label>
+            <input type="checkbox" name="ist_ok_extra_${number}">
+            Fahrzeug in Ordnung
+        </label>
+
+        <label>Mängel:</label>
+        <input type="text" name="maengel_extra_${number}">
+
+        <div>
+            <button type="button"
+                    class="signature-button"
+                    onclick="openSignature(this)">
+                ✍️ Unterschreiben
+            </button>
+            <input type="hidden"
+                   class="signature-data"
+                   name="signature_extra_${number}">
+        </div>
+    `;
+
+    container.appendChild(row);
 });
 </script>
 {% endblock %}
