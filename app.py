@@ -829,7 +829,8 @@ def abfahrtskontrolle():
                             unterschrift,
                             submission_id
                             )
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON CONFLICT (submission_id) DO NOTHING
                             """,
                            (
                              company_id,
