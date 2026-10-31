@@ -835,7 +835,8 @@ WHERE abfahrtskontrollen.unterschrift IS NULL
         "abfahrtskontrolle.html",
         izabrana_sedmica=izabrana_sedmica,
         kontrole=kontrole,
-        kontrole_po_danima=kontrole_po_danima
+        kontrole_po_danima=kontrole_po_danima,
+        dodatne_kontrole=dodatne_kontrole
     )
     
        
