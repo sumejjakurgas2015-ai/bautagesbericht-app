@@ -753,8 +753,13 @@ def abfahrtskontrolle():
                 ist_ok,
                 maengel,
                 unterschrift
-            ))   
-        if zapisi:
+            ))
+        postojeci_potpisi = {
+            kljuc.split("existing_signature_", 1)[1]: vrijednost
+            for kljuc, vrijednost in request.form.items()
+            if kljuc.startswith("existing_signature_") and vrijednost
+} 
+        if zapisi or postojeci_potpisi:
             conn = get_db()
             cur = conn.cursor()
 
