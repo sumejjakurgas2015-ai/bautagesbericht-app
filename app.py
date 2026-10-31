@@ -914,6 +914,7 @@ def abfahrtskontrolle():
              flash("Fehler beim Laden der Abfahrtskontrolle. Bitte erneut versuchen.", "error")
              kontrole = []
              kontrole_po_danima = {}
+             dodatne_kontrole = [] 
     
     finally:
             cur.close()
