@@ -795,7 +795,7 @@ WHERE abfahrtskontrollen.unterschrift IS NULL
     try:
         cur.execute(
             """
-            SELECT datum, fahrzeug, kennzeichen,
+          SELECT id, datum, fahrzeug, kennzeichen, 
                    fahrer, ist_ok, maengel, unterschrift
             FROM abfahrtskontrollen
             WHERE company_id = %s
