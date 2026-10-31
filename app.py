@@ -812,12 +812,16 @@ WHERE abfahrtskontrollen.unterschrift IS NULL
 
         oznake_dana = ["Mo", "Di", "Mi", "Do", "Fr", "Sa"]
 
-        for kontrola in kontrole:
-            broj_dana = kontrola["datum"].weekday()
+      for kontrola in kontrole:
+    broj_dana = kontrola["datum"].weekday()
 
-            if broj_dana < 6:
-                oznaka = oznake_dana[broj_dana]
-                kontrole_po_danima[oznaka] = kontrola
+    if broj_dana < 6:
+        oznaka = oznake_dana[broj_dana]
+
+        if oznaka not in kontrole_po_danima:
+            kontrole_po_danima[oznaka] = kontrola
+        else:
+            dodatne_kontrole.append(kontrola)
     except Exception as e:
              flash("Fehler beim Laden der Abfahrtskontrolle. Bitte erneut versuchen.", "error")
              kontrole = []
