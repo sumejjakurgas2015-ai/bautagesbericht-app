@@ -709,6 +709,31 @@ def abfahrtskontrolle():
                 maengel,
                 unterschrift
             ))
+        extra_count = int(request.form.get("extraVehicleCount") or 0)
+
+        for broj in range(1, extra_count + 1):
+            datum = request.form.get(f"datum_extra_{broj}")
+            fahrzeug = (request.form.get(f"fahrzeug_extra_{broj}") or "").strip()
+            kennzeichen = (request.form.get(f"kennzeichen_extra_{broj}") or "").strip()
+            fahrer = (request.form.get(f"fahrer_extra_{broj}") or "").strip()
+            ist_ok = request.form.get(f"ist_ok_extra_{broj}") == "on"
+            maengel = (request.form.get(f"maengel_extra_{broj}") or "").strip()
+            unterschrift = request.form.get(f"signature_extra_{broj}") or ""
+
+            if not datum:
+                continue
+
+            zapisi.append((
+                company_id,
+                user_id,
+                datum,
+                fahrzeug,
+                kennzeichen,
+                fahrer,
+                ist_ok,
+                maengel,
+                unterschrift
+            ))   
         if zapisi:
             conn = get_db()
             cur = conn.cursor()
