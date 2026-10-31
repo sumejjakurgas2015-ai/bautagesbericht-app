@@ -685,8 +685,11 @@ def abfahrtskontrolle():
     if request.method == "POST":
         dani = ["Mo", "Di", "Mi", "Do", "Fr", "Sa"]
         zapisi = []
-
+        id_kontrole = {}
+        
         for dan in dani:
+            id_kontrole[dan] = request.form.get(f"kontrola_id_{dan}") or None
+            
             datum = request.form.get(f"datum_{dan}")
             fahrzeug = (request.form.get(f"fahrzeug_{dan}") or "").strip()
             kennzeichen = (request.form.get(f"kennzeichen_{dan}") or "").strip()
