@@ -808,6 +808,7 @@ WHERE abfahrtskontrollen.unterschrift IS NULL
 
         kontrole = cur.fetchall()
         kontrole_po_danima = {}
+        dodatne_kontrole = []
 
         oznake_dana = ["Mo", "Di", "Mi", "Do", "Fr", "Sa"]
 
