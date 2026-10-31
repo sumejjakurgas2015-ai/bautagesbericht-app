@@ -847,6 +847,27 @@ def abfahrtskontrolle():
                         broj_sacuvanih += 1
                     else:
                         broj_zakljucanih += 1
+                for kontrola_id, potpis in postojeci_potpisi.items():
+                    if not kontrola_id.isdigit():
+                        continue
+
+                    cur.execute(
+                        """
+                        UPDATE abfahrtskontrollen
+                        SET unterschrift = %s,
+                            updated_at = NOW()
+                        WHERE id = %s
+                          AND company_id = %s
+                          AND user_id = %s
+                          AND (unterschrift IS NULL OR unterschrift = '')
+                        """,
+                        (potpis, int(kontrola_id), company_id, user_id)
+                    )
+
+                    if cur.rowcount == 1:
+                        broj_sacuvanih += 1
+                    else:
+                        broj_zakljucanih += 1 
                    
 
                 conn.commit()
