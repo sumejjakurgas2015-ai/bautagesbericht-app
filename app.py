@@ -238,6 +238,7 @@ def init_db():
             ist_ok BOOLEAN DEFAULT FALSE,
             maengel TEXT,
             unterschrift TEXT,
+            submission_id TEXT,
             created_at TIMESTAMP DEFAULT NOW(),
            updated_at TIMESTAMP DEFAULT NOW()
         )
