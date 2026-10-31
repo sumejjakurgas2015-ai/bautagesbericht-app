@@ -762,8 +762,11 @@ def abfahrtskontrolle():
                 broj_sacuvanih = 0
                 broj_zakljucanih = 0
                 
-               
+                    broj_zapisa = 0
+                
                     for zapis in zapisi:
+                        broj_zapisa += 1
+                        submission_id = f"{form_submission_id}:{broj_zapisa}"
                     (
                         kontrola_id,
                         zapis_company_id,
