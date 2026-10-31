@@ -702,6 +702,7 @@ def abfahrtskontrolle():
                 continue
 
             zapisi.append((
+                id_kontrole[dan],
                 company_id,
                 user_id,
                 datum,
@@ -727,6 +728,7 @@ def abfahrtskontrolle():
                 continue
 
             zapisi.append((
+                None,
                 company_id,
                 user_id,
                 datum,
