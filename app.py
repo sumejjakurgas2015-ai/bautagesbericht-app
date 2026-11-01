@@ -223,7 +223,7 @@ def init_db():
 
     reset_sequences(cur)
     
-        # Abfahrtskontrolle - dnevne kontrole vozila
+    # Abfahrtskontrolle - dnevne kontrole vozila
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS abfahrtskontrollen (
@@ -679,26 +679,22 @@ def abfahrtskontrolle():
 
     company_id = current_company_id()
     user_id = current_user_id()
-
-    danas = date.today()
-
-    godina, sedmica, _ = danas.isocalendar()
-
+    godina, sedmica, _ = date.today().isocalendar()
     izabrana_sedmica = (
-    request.form.get("kalenderwoche")
-    if request.method == "POST"
-    else request.args.get("kw")
-) or f"{godina}-W{sedmica:02d}"
-    
+        request.form.get("kalenderwoche")
+        if request.method == "POST"
+        else request.args.get("kw")
+    ) or f"{godina}-W{sedmica:02d}"
+
     if request.method == "POST":
-        dani = ["Mo", "Di", "Mi", "Do", "Fr", "Sa"]
         zapisi = []
-        id_kontrole = {}
         form_submission_id = (request.form.get("formSubmissionId") or "").strip()
-        
-        for dan in dani:
-            id_kontrole[dan] = request.form.get(f"kontrola_id_{dan}") or None
-            
+        # Every form load gets its own UUID; never reuse a missing identifier.
+        if not form_submission_id:
+            form_submission_id = str(uuid.uuid4())
+
+        for dan in ("Mo", "Di", "Mi", "Do", "Fr", "Sa"):
+            kontrola_id = request.form.get(f"kontrola_id_{dan}") or None
             datum = request.form.get(f"datum_{dan}")
             fahrzeug = (request.form.get(f"fahrzeug_{dan}") or "").strip()
             kennzeichen = (request.form.get(f"kennzeichen_{dan}") or "").strip()
@@ -707,25 +703,17 @@ def abfahrtskontrolle():
             maengel = (request.form.get(f"maengel_{dan}") or "").strip()
             unterschrift = request.form.get(f"signature_{dan}") or ""
 
- if not datum:
-    continue
+            if not datum:
+                continue
+            if not kontrola_id and not fahrzeug and not kennzeichen and not fahrer:
+                continue
+            zapisi.append((kontrola_id, datum, fahrzeug, kennzeichen,
+                           fahrer, ist_ok, maengel, unterschrift))
 
- if not id_kontrole[dan] and not fahrzeug and not kennzeichen and not fahrer:
-    continue
-
-            zapisi.append((
-                id_kontrole[dan],
-                company_id,
-                user_id,
-                datum,
-                fahrzeug,
-                kennzeichen,
-                fahrer,
-                ist_ok,
-                maengel,
-                unterschrift
-            ))
-        extra_count = int(request.form.get("extraVehicleCount") or 0)
+        try:
+            extra_count = min(max(int(request.form.get("extraVehicleCount") or 0), 0), 100)
+        except (ValueError, TypeError):
+            extra_count = 0
 
         for broj in range(1, extra_count + 1):
             datum = request.form.get(f"datum_extra_{broj}")
@@ -735,228 +723,141 @@ def abfahrtskontrolle():
             ist_ok = request.form.get(f"ist_ok_extra_{broj}") == "on"
             maengel = (request.form.get(f"maengel_extra_{broj}") or "").strip()
             unterschrift = request.form.get(f"signature_extra_{broj}") or ""
-
-            if not datum:
+            if not datum or (not fahrzeug and not kennzeichen and not fahrer):
                 continue
-                
-            if not fahrzeug and not kennzeichen and not fahrer:
-                continue   
+            zapisi.append((None, datum, fahrzeug, kennzeichen,
+                           fahrer, ist_ok, maengel, unterschrift))
 
-            zapisi.append((
-                None,
-                company_id,
-                user_id,
-                datum,
-                fahrzeug,
-                kennzeichen,
-                fahrer,
-                ist_ok,
-                maengel,
-                unterschrift
-            ))
         postojeci_potpisi = {
             kljuc.split("existing_signature_", 1)[1]: vrijednost
             for kljuc, vrijednost in request.form.items()
             if kljuc.startswith("existing_signature_") and vrijednost
-} 
+        }
+
         if zapisi or postojeci_potpisi:
             conn = get_db()
             cur = conn.cursor()
-
             try:
                 broj_sacuvanih = 0
                 broj_zakljucanih = 0
-                
-                    broj_zapisa = 0
-                
-                    for zapis in zapisi:
-                        broj_zapisa += 1
-                        submission_id = f"{form_submission_id}:{broj_zapisa}"
-                    (
-                        kontrola_id,
-                        zapis_company_id,
-                        zapis_user_id,
-                        datum,
-                        fahrzeug,
-                        kennzeichen,
-                        fahrer,
-                        ist_ok,
-                        maengel,
-                        unterschrift
-                    ) = zapis
-
-                    podaci = (
-                        datum,
-                        fahrzeug,
-                        kennzeichen,
-                        fahrer,
-                        ist_ok,
-                        maengel,
-                        unterschrift
-                    )
-
+                for broj_zapisa, zapis in enumerate(zapisi, start=1):
+                    (kontrola_id, datum, fahrzeug, kennzeichen,
+                     fahrer, ist_ok, maengel, unterschrift) = zapis
+                    podaci = (datum, fahrzeug, kennzeichen, fahrer,
+                              ist_ok, maengel, unterschrift)
                     if kontrola_id:
                         cur.execute(
                             """
                             UPDATE abfahrtskontrollen
-                            SET datum = %s,
-                                fahrzeug = %s,
-                                kennzeichen = %s,
-                                fahrer = %s,
-                                ist_ok = %s,
-                                maengel = %s,
-                                unterschrift = %s,
-                                updated_at = NOW()
-                            WHERE id = %s
-                              AND company_id = %s
-                              AND user_id = %s
+                            SET datum = %s, fahrzeug = %s, kennzeichen = %s,
+                                fahrer = %s, ist_ok = %s, maengel = %s,
+                                unterschrift = %s, updated_at = NOW()
+                            WHERE id = %s AND company_id = %s AND user_id = %s
                               AND (unterschrift IS NULL OR unterschrift = '')
                             """,
-                            podaci + (
-                                kontrola_id,
-                                company_id,
-                                user_id
-                            )
+                            podaci + (kontrola_id, company_id, user_id),
                         )
-
                     else:
+                        submission_id = f"{form_submission_id}:{broj_zapisa}"
                         cur.execute(
                             """
-                            INSERT INTO abfahrtskontrollen (
-                                company_id,
-                                user_id,
-                                datum,
-                                fahrzeug,
-                                kennzeichen,
-                                fahrer,
-                                ist_ok,
-                            maengel,
-                            unterschrift,
-                            submission_id
-                            )
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            INSERT INTO abfahrtskontrollen
+                            (company_id, user_id, datum, fahrzeug, kennzeichen,
+                             fahrer, ist_ok, maengel, unterschrift, submission_id)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                             ON CONFLICT (submission_id) DO NOTHING
                             """,
-                           (
-                             company_id,
-                             user_id
-                           ) + podaci + (submission_id,)
+                            (company_id, user_id) + podaci + (submission_id,),
                         )
-
                     if cur.rowcount == 1:
                         broj_sacuvanih += 1
                     else:
                         broj_zakljucanih += 1
+
                 for kontrola_id, potpis in postojeci_potpisi.items():
                     if not kontrola_id.isdigit():
                         continue
-
                     cur.execute(
                         """
                         UPDATE abfahrtskontrollen
-                        SET unterschrift = %s,
-                            updated_at = NOW()
-                        WHERE id = %s
-                          AND company_id = %s
-                          AND user_id = %s
+                        SET unterschrift = %s, updated_at = NOW()
+                        WHERE id = %s AND company_id = %s AND user_id = %s
                           AND (unterschrift IS NULL OR unterschrift = '')
                         """,
-                        (potpis, int(kontrola_id), company_id, user_id)
+                        (potpis, int(kontrola_id), company_id, user_id),
                     )
-
                     if cur.rowcount == 1:
                         broj_sacuvanih += 1
                     else:
-                        broj_zakljucanih += 1 
-                   
+                        broj_zakljucanih += 1
 
                 conn.commit()
-             
-                if broj_sacuvanih > 0:
+                if broj_sacuvanih:
                     flash(f"{broj_sacuvanih} Abfahrtskontrolle(n) gespeichert.", "success")
-
-                if broj_zakljucanih > 0:
-                    flash(f"{broj_zakljucanih} bereits unterschriebene Kontrolle(n) wurden nicht verändert.", "warning")
-
+                if broj_zakljucanih:
+                    flash(f"{broj_zakljucanih} Kontrolle(n) nicht verändert (bereits unterschrieben oder doppelt gesendet).", "warning")
             except Exception as e:
                 conn.rollback()
                 flash(f"Fehler beim Speichern: {e}", "error")
-
             finally:
                 cur.close()
                 conn.close()
 
-        return redirect(
-            url_for(
-                "abfahrtskontrolle",
-                kw=request.form.get("kalenderwoche") or izabrana_sedmica
-            )
-        ) 
+        return redirect(url_for("abfahrtskontrolle", kw=izabrana_sedmica))
+
     try:
         godina_kw, sedmica_kw = izabrana_sedmica.split("-W")
-        pocetak = date.fromisocalendar(
-            int(godina_kw), int(sedmica_kw), 1
-        )
+        pocetak = date.fromisocalendar(int(godina_kw), int(sedmica_kw), 1)
     except (ValueError, TypeError):
         flash("Ungültige Kalenderwoche.", "error")
         return redirect(url_for("abfahrtskontrolle"))
 
     kraj = pocetak + timedelta(days=6)
-
     conn = get_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
-
     try:
         cur.execute(
             """
-          SELECT id, datum, fahrzeug, kennzeichen, 
-                   fahrer, ist_ok, maengel, unterschrift
+            SELECT id, datum, fahrzeug, kennzeichen, fahrer, ist_ok,
+                   maengel, unterschrift
             FROM abfahrtskontrollen
-            WHERE company_id = %s
-              AND user_id = %s
+            WHERE company_id = %s AND user_id = %s
               AND datum BETWEEN %s AND %s
-            ORDER BY datum
+            ORDER BY datum, id
             """,
-            (company_id, user_id, pocetak, kraj)
+            (company_id, user_id, pocetak, kraj),
         )
-
         kontrole = cur.fetchall()
         kontrole_po_danima = {}
         dodatne_kontrole = []
-
         oznake_dana = ["Mo", "Di", "Mi", "Do", "Fr", "Sa"]
-
-      for kontrola in kontrole:
-    broj_dana = kontrola["datum"].weekday()
-
-    if broj_dana < 6:
-        oznaka = oznake_dana[broj_dana]
-
-        if oznaka not in kontrole_po_danima:
-            kontrole_po_danima[oznaka] = kontrola
-        else:
-            dodatne_kontrole.append(kontrola)
-    except Exception as e:
-             flash("Fehler beim Laden der Abfahrtskontrolle. Bitte erneut versuchen.", "error")
-             kontrole = []
-             kontrole_po_danima = {}
-             dodatne_kontrole = [] 
-    
+        for kontrola in kontrole:
+            broj_dana = kontrola["datum"].weekday()
+            if broj_dana < 6:
+                oznaka = oznake_dana[broj_dana]
+                if oznaka not in kontrole_po_danima:
+                    kontrole_po_danima[oznaka] = kontrola
+                else:
+                    dodatne_kontrole.append(kontrola)
+    except Exception:
+        flash("Fehler beim Laden der Abfahrtskontrolle. Bitte erneut versuchen.", "error")
+        kontrole = []
+        kontrole_po_danima = {}
+        dodatne_kontrole = []
     finally:
-            cur.close()
-            conn.close()
-    form_submission_id = str(uuid.uuid4())   
-        
+        cur.close()
+        conn.close()
+
     return render_template(
         "abfahrtskontrolle.html",
         izabrana_sedmica=izabrana_sedmica,
         kontrole=kontrole,
         kontrole_po_danima=kontrole_po_danima,
         dodatne_kontrole=dodatne_kontrole,
-        form_submission_id=form_submission_id
+        form_submission_id=str(uuid.uuid4()),
     )
-    
-       
+
+
 @app.route("/logout")
 def logout():
     session.clear()
