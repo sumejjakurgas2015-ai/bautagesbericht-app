@@ -250,13 +250,13 @@ def init_db():
     ALTER TABLE abfahrtskontrollen
     ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()
     """
-)
-   cur.execute(
+    )
+    cur.execute(
     """
     ALTER TABLE abfahrtskontrollen
     ADD COLUMN IF NOT EXISTS submission_id TEXT
     """
-) 
+    ) 
 
     conn.commit()
     cur.close()
