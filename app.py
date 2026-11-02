@@ -1383,6 +1383,13 @@ def report_pdf(report_id):
         mimetype="application/pdf",
     )
 
+@app.route("/entsorgungsdokumentation", methods=["GET"])
+def entsorgungsdokumentation():
+    if not is_logged_in():
+        return redirect(url_for("login"))
+
+    return render_template("entsorgungsdokumentation.html")
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
