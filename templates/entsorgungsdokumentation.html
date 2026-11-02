@@ -381,6 +381,11 @@ document.getElementById("entsorgungForm").addEventListener("submit", function(ev
 
     document.getElementById("unterschriftFahrer").value =
         fahrer.canvas.toDataURL("image/png");
+    
+        // Spriječi ponovno slanje obrasca.
+    const saveButton = this.querySelector('button[type="submit"]');
+    saveButton.disabled = true;
+    saveButton.textContent = "⏳ Dokument wird gespeichert...";
 });
 </script>
 
