@@ -1583,6 +1583,52 @@ def entsorgungsdokumentation():
 
     return render_template("entsorgungsdokumentation.html")
 
+@app.route("/entsorgungsdokumentation/liste")
+def entsorgungsdokumentation_liste():
+    if not is_logged_in():
+        return redirect(url_for("login"))
+
+    conn = None
+
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+
+        cur.execute(
+            """
+            SELECT
+                id,
+                baustellenverantwortlicher,
+                baustelle,
+                projekt_nr,
+                datum,
+                fahrer,
+                erstellt_am
+            FROM entsorgungsdokumentationen
+            WHERE company_id = %s
+            ORDER BY erstellt_am DESC, id DESC
+            """,
+            (current_company_id(),)
+        )
+
+        dokumente = cur.fetchall()
+
+        return render_template(
+            "entsorgungsdokumentation_liste.html",
+            dokumente=dokumente
+        )
+
+    except Exception:
+        app.logger.exception(
+            "Fehler beim Laden der Entsorgungsdokumentationen"
+        )
+        flash("Dokumente konnten nicht geladen werden.")
+        return redirect(url_for("entsorgungsdokumentation"))
+
+    finally:
+        if conn:
+            conn.close()
+
 
 
 if __name__ == "__main__":
