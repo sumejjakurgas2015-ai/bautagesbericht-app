@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div style="max-width:1100px; margin:30px auto; padding:20px;">
+
+    <h1>♻️ Entsorgungsdokumentation</h1>
+    <h2>Gespeicherte Dokumente</h2>
+
+    <p>Übersicht aller gespeicherten Entsorgungsdokumentationen.</p>
+
+    <div style="margin:25px 0;">
+        <a href="{{ url_for('entsorgungsdokumentation') }}"
+           style="background:#2563eb; color:white; padding:12px 20px;
+                  border-radius:6px; text-decoration:none;">
+            ➕ Neue Entsorgungsdokumentation
+        </a>
+    </div>
+
+    <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; background:white; color:#222;">
+
+            <thead>
+                <tr style="background:#1e293b; color:white;">
+                    <th style="padding:12px;">Dokument-Nr.</th>
+                    <th style="padding:12px;">Datum</th>
+                    <th style="padding:12px;">Baustelle</th>
+                    <th style="padding:12px;">Baustellenverantwortlicher</th>
+                    <th style="padding:12px;">Fahrer</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for dokument in dokumente %}
+                <tr style="border-bottom:1px solid #ddd;">
+                    <td style="padding:12px;">
+                        {{ dokument.id }}
+                    </td>
+
+                    <td style="padding:12px;">
+                        {{ dokument.datum.strftime('%d.%m.%Y') if dokument.datum else '-' }}
+                    </td>
+
+                    <td style="padding:12px;">
+                        {{ dokument.baustelle }}
+                    </td>
+
+                    <td style="padding:12px;">
+                        {{ dokument.baustellenverantwortlicher }}
+                    </td>
+
+                    <td style="padding:12px;">
+                        {{ dokument.fahrer }}
+                    </td>
+                </tr>
+
+                {% else %}
+
+                <tr>
+                    <td colspan="5"
+                        style="padding:25px; text-align:center;">
+                        Noch keine Entsorgungsdokumentationen vorhanden.
+                    </td>
+                </tr>
+
+                {% endfor %}
+            </tbody>
+
+        </table>
+    </div>
+
+</div>
+
+{% endblock %}
