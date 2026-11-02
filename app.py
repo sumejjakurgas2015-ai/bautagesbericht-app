@@ -1,6 +1,7 @@
 import os
 import base64
 import uuid
+import json
 
 from io import BytesIO
 from datetime import date, timedelta
@@ -1382,13 +1383,206 @@ def report_pdf(report_id):
         download_name=f"bautagesbericht_{report_id}.pdf",
         mimetype="application/pdf",
     )
-
-@app.route("/entsorgungsdokumentation", methods=["GET"])
+@app.route("/entsorgungsdokumentation", methods=["GET", "POST"])
 def entsorgungsdokumentation():
     if not is_logged_in():
         return redirect(url_for("login"))
 
+    if request.method == "POST":
+        company_id = current_company_id()
+        user_id = current_user_id()
+
+        unterschrift_bv = (
+            request.form.get("unterschrift_bv") or ""
+        ).strip()
+
+        unterschrift_fahrer = (
+            request.form.get("unterschrift_fahrer") or ""
+        ).strip()
+
+        # Oba potpisa su obavezna.
+        for unterschrift in (unterschrift_bv, unterschrift_fahrer):
+            if not unterschrift.startswith("data:image/png;base64,"):
+                flash("Beide Unterschriften sind erforderlich.")
+                return redirect(url_for("entsorgungsdokumentation"))
+
+            try:
+                bild = base64.b64decode(
+                    unterschrift.split(",", 1)[1],
+                    validate=True
+                )
+                if len(bild) < 100 or len(bild) > 500000:
+                    raise ValueError("Ungültige Bildgröße")
+                if not bild.startswith(b"\x89PNG\r\n\x1a\n"):
+                    raise ValueError("Ungültiges PNG")
+            except (ValueError, base64.binascii.Error):
+                flash("Ungültige Unterschrift.")
+                return redirect(url_for("entsorgungsdokumentation"))
+
+        schrottmaterialien = []
+        kabelreste = []
+
+        schrott_namen = [
+            "Kabelgarnituren",
+            "Kabelverteiler / Hausanschluss- und Zählerschränke",
+            "Betriebsmittel",
+            "Beleuchtung",
+            "Stahl / Eisen",
+            "Sonstige Materialien",
+        ]
+
+        kabel_namen = [
+            "Kupferkabel / Kupferleitungen",
+            "Aluminiumkabel",
+            "Kabel mit Bleimantel / Massekabel",
+            "Kabelschutzrohre / Abdeckhauben",
+            "Sonstiges",
+        ]
+
+        for prefix, namen, ziel in (
+            ("schrott", schrott_namen, schrottmaterialien),
+            ("kabel", kabel_namen, kabelreste),
+        ):
+            for nummer, material in enumerate(namen, start=1):
+                beschreibung = (
+                    request.form.get(f"{prefix}_beschreibung_{nummer}") or ""
+                ).strip()
+
+                menge = (
+                    request.form.get(f"{prefix}_menge_{nummer}") or ""
+                ).strip()
+
+                einheit = (
+                    request.form.get(f"{prefix}_einheit_{nummer}") or ""
+                ).strip()
+
+                if menge or beschreibung:
+                    ziel.append({
+                        "material": material,
+                        "beschreibung": beschreibung,
+                        "menge": menge,
+                        "einheit": einheit,
+                    })
+
+        felder = {
+            "baustellenverantwortlicher": (
+                request.form.get("baustellenverantwortlicher") or ""
+            ).strip(),
+            "baustelle": (
+                request.form.get("baustelle") or ""
+            ).strip(),
+            "projekt_nr": (
+                request.form.get("projekt_nr") or ""
+            ).strip(),
+            "datum": request.form.get("datum") or "",
+            "entsorgungsweg": request.form.get("entsorgungsweg") or "",
+            "fahrer": (request.form.get("fahrer") or "").strip(),
+            "uebergabe_datum": request.form.get("uebergabe_datum") or "",
+            "uebergabe_uhrzeit": request.form.get("uebergabe_uhrzeit") or "",
+            "uebergabeort": (
+                request.form.get("uebergabeort") or ""
+            ).strip(),
+        }
+
+        pflichtfelder = (
+            "baustellenverantwortlicher",
+            "baustelle",
+            "datum",
+            "entsorgungsweg",
+            "fahrer",
+            "uebergabe_datum",
+            "uebergabe_uhrzeit",
+            "uebergabeort",
+        )
+
+        if any(not felder[name] for name in pflichtfelder):
+            flash("Bitte alle Pflichtfelder ausfüllen.")
+            return redirect(url_for("entsorgungsdokumentation"))
+
+        if felder["entsorgungsweg"] not in (
+            "PEJO-Fahrer LKW",
+            "BV Firmenfahrzeug",
+        ):
+            flash("Ungültiger Entsorgungsweg.")
+            return redirect(url_for("entsorgungsdokumentation"))
+
+        conn = None
+
+        try:
+            conn = get_db()
+            cur = conn.cursor()
+
+            cur.execute(
+                """
+                INSERT INTO entsorgungsdokumentationen (
+                    company_id,
+                    user_id,
+                    baustellenverantwortlicher,
+                    baustelle,
+                    projekt_nr,
+                    datum,
+                    schrottmaterialien,
+                    kabelreste,
+                    entsorgungsweg,
+                    fahrer,
+                    uebergabe_datum,
+                    uebergabe_uhrzeit,
+                    uebergabeort,
+                    unterschrift_bv,
+                    unterschrift_fahrer
+                )
+                VALUES (
+                    %s, %s, %s, %s, %s, %s,
+                    %s::jsonb, %s::jsonb,
+                    %s, %s, %s, %s, %s, %s, %s
+                )
+                RETURNING id
+                """,
+                (
+                    company_id,
+                    user_id,
+                    felder["baustellenverantwortlicher"],
+                    felder["baustelle"],
+                    felder["projekt_nr"],
+                    felder["datum"],
+                    json.dumps(schrottmaterialien),
+                    json.dumps(kabelreste),
+                    felder["entsorgungsweg"],
+                    felder["fahrer"],
+                    felder["uebergabe_datum"],
+                    felder["uebergabe_uhrzeit"],
+                    felder["uebergabeort"],
+                    unterschrift_bv,
+                    unterschrift_fahrer,
+                ),
+            )
+
+            dokument_id = cur.fetchone()["id"]
+            conn.commit()
+
+            flash(
+                f"Entsorgungsdokumentation Nr. {dokument_id} gespeichert."
+            )
+
+            return redirect(url_for("entsorgungsdokumentation"))
+
+        except Exception:
+            if conn:
+                conn.rollback()
+
+            app.logger.exception(
+                "Fehler beim Speichern der Entsorgungsdokumentation"
+            )
+
+            flash("Fehler beim Speichern. Bitte erneut versuchen.")
+            return redirect(url_for("entsorgungsdokumentation"))
+
+        finally:
+            if conn:
+                conn.close()
+
     return render_template("entsorgungsdokumentation.html")
+
 
 
 if __name__ == "__main__":
