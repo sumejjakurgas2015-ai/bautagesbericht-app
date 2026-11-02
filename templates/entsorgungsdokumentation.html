@@ -1,0 +1,387 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+.entsorgung {
+    max-width: 950px;
+    margin: 20px auto;
+    padding: 25px;
+    background: white;
+    color: #222;
+    border: 1px solid #ddd;
+    border-top: 5px solid #c40000;
+}
+
+.entsorgung-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    border-bottom: 2px solid #c40000;
+    padding-bottom: 15px;
+    margin-bottom: 25px;
+}
+
+.entsorgung-logo {
+    max-width: 150px;
+    max-height: 80px;
+    object-fit: contain;
+}
+
+.entsorgung h1 {
+    font-size: 25px;
+    margin: 0;
+}
+
+.entsorgung h2 {
+    margin-top: 30px;
+    padding: 8px;
+    background: #f5f5f5;
+    border-left: 4px solid #c40000;
+    font-size: 18px;
+}
+
+.entsorgung input,
+.entsorgung select,
+.entsorgung textarea {
+    width: 100%;
+    padding: 9px;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 16px;
+}
+
+.entsorgung label {
+    display: block;
+    margin: 12px 0 5px;
+    font-weight: bold;
+}
+
+.entsorgung table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.entsorgung th,
+.entsorgung td {
+    border: 1px solid #aaa;
+    padding: 8px;
+    text-align: left;
+}
+
+.entsorgung th {
+    background: #f0f0f0;
+}
+
+.entsorgung .table-wrap {
+    overflow-x: auto;
+}
+
+.entsorgung .check-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 12px 0;
+}
+
+.entsorgung .check-option input {
+    width: auto;
+}
+
+.entsorgung canvas {
+    width: 100%;
+    height: 160px;
+    border: 1px solid #999;
+    background: #fff;
+    touch-action: none;
+}
+
+.entsorgung button {
+    padding: 12px 20px;
+    margin-top: 12px;
+    cursor: pointer;
+}
+
+.entsorgung .save-btn {
+    background: #187b36;
+    color: white;
+    border: 0;
+    border-radius: 5px;
+    font-weight: bold;
+}
+</style>
+
+<div class="entsorgung">
+
+    <div class="entsorgung-header">
+        <div>
+            <h1>Entsorgungsdokumentation</h1>
+            <p>Erfassung von Schrottmaterialien und Kabelresten</p>
+        </div>
+
+        <img
+            src="{{ url_for('static', filename='logo.png') }}"
+            alt="PEJO Elektrotechnik"
+            class="entsorgung-logo"
+        >
+    </div>
+
+    <form id="entsorgungForm" method="POST">
+
+        <h2>1. Angaben zur Baustelle</h2>
+
+        <label>Baustellenverantwortlicher (BV)</label>
+        <input type="text" name="baustellenverantwortlicher" required>
+
+        <label>Baustelle / Bauvorhaben</label>
+        <input type="text" name="baustelle" required>
+
+        <label>Auftrags- / Projekt-Nr.</label>
+        <input type="text" name="projekt_nr">
+
+        <label>Datum</label>
+        <input type="date" name="datum" required>
+
+
+        <h2>2. Erfassung der angefallenen Schrottmaterialien</h2>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Materialart</th>
+                        <th>Beschreibung</th>
+                        <th>Menge</th>
+                        <th>Einheit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for material in [
+                        'Kabelgarnituren',
+                        'Kabelverteiler / Hausanschluss- und Zählerschränke',
+                        'Betriebsmittel',
+                        'Beleuchtung',
+                        'Stahl / Eisen',
+                        'Sonstige Materialien'
+                    ] %}
+                    <tr>
+                        <td>{{ material }}</td>
+                        <td>
+                            <input type="text"
+                                   name="schrott_beschreibung_{{ loop.index }}">
+                        </td>
+                        <td>
+                            <input type="number"
+                                   name="schrott_menge_{{ loop.index }}"
+                                   min="0" step="0.01">
+                        </td>
+                        <td>
+                            <select name="schrott_einheit_{{ loop.index }}">
+                                <option value="Stk.">Stk.</option>
+                                <option value="kg">kg</option>
+                                <option value="t">t</option>
+                                <option value="m">m</option>
+                                <option value="m³">m³</option>
+                            </select>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+
+        <h2>3. Kabel- und Leitungsreste</h2>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Materialart</th>
+                        <th>Beschreibung</th>
+                        <th>Menge</th>
+                        <th>Einheit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for material in [
+                        'Kupferkabel / Kupferleitungen',
+                        'Aluminiumkabel',
+                        'Kabel mit Bleimantel / Massekabel',
+                        'Kabelschutzrohre / Abdeckhauben',
+                        'Sonstiges'
+                    ] %}
+                    <tr>
+                        <td>{{ material }}</td>
+                        <td>
+                            <input type="text"
+                                   name="kabel_beschreibung_{{ loop.index }}">
+                        </td>
+                        <td>
+                            <input type="number"
+                                   name="kabel_menge_{{ loop.index }}"
+                                   min="0" step="0.01">
+                        </td>
+                        <td>
+                            <select name="kabel_einheit_{{ loop.index }}">
+                                <option value="m">m</option>
+                                <option value="kg">kg</option>
+                                <option value="Stk.">Stk.</option>
+                                <option value="t">t</option>
+                            </select>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+
+        <h2>4. Entsorgungsweg</h2>
+
+        <label class="check-option">
+            <input type="radio"
+                   name="entsorgungsweg"
+                   value="PEJO-Fahrer LKW"
+                   required>
+            Rückführung über PEJO-Fahrer (LKW)
+        </label>
+
+        <label class="check-option">
+            <input type="radio"
+                   name="entsorgungsweg"
+                   value="BV Firmenfahrzeug">
+            Rückführung durch BV im Firmenfahrzeug
+        </label>
+
+        <label>Name des Fahrers / Übernehmers</label>
+        <input type="text" name="fahrer" required>
+
+        <label>Datum der Übergabe</label>
+        <input type="date" name="uebergabe_datum" required>
+
+        <label>Uhrzeit der Übergabe</label>
+        <input type="time" name="uebergabe_uhrzeit" required>
+
+        <label>Übergabeort</label>
+        <input type="text" name="uebergabeort" required>
+
+
+        <h2>5. Bestätigung und Unterschriften</h2>
+
+        <label>Unterschrift Vorarbeiter / BV</label>
+        <canvas id="signBV"></canvas>
+        <button type="button" onclick="clearSignature('signBV')">
+            Unterschrift löschen
+        </button>
+
+        <label>Unterschrift LKW-Fahrer / Übernehmer</label>
+        <canvas id="signFahrer"></canvas>
+        <button type="button" onclick="clearSignature('signFahrer')">
+            Unterschrift löschen
+        </button>
+
+        <input type="hidden" name="unterschrift_bv" id="unterschriftBV">
+        <input type="hidden" name="unterschrift_fahrer" id="unterschriftFahrer">
+
+        <p id="signaturFehler" style="color:#c40000;"></p>
+
+        <button type="submit" class="save-btn">
+            💾 Entsorgungsdokumentation speichern
+        </button>
+
+    </form>
+</div>
+
+<script>
+const unterschriften = {};
+
+function setupSignature(id) {
+    const canvas = document.getElementById(id);
+    const ctx = canvas.getContext("2d");
+
+    canvas.width = canvas.clientWidth;
+    canvas.height = 160;
+
+    ctx.strokeStyle = "#111";
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+
+    let drawing = false;
+    let signed = false;
+
+    function position(event) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+            x: (event.clientX - rect.left) * canvas.width / rect.width,
+            y: (event.clientY - rect.top) * canvas.height / rect.height
+        };
+    }
+
+    canvas.addEventListener("pointerdown", event => {
+        drawing = true;
+        signed = true;
+
+        canvas.setPointerCapture(event.pointerId);
+
+        const p = position(event);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+    });
+
+    canvas.addEventListener("pointermove", event => {
+        if (!drawing) return;
+
+        const p = position(event);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+    });
+
+    canvas.addEventListener("pointerup", () => {
+        drawing = false;
+    });
+
+    canvas.addEventListener("pointercancel", () => {
+        drawing = false;
+    });
+
+    unterschriften[id] = {
+        canvas: canvas,
+        isSigned: () => signed,
+        clear: () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            signed = false;
+        }
+    };
+}
+
+function clearSignature(id) {
+    unterschriften[id].clear();
+}
+
+setupSignature("signBV");
+setupSignature("signFahrer");
+
+document.getElementById("entsorgungForm").addEventListener("submit", function(event) {
+    const bv = unterschriften["signBV"];
+    const fahrer = unterschriften["signFahrer"];
+
+    if (!bv.isSigned() || !fahrer.isSigned()) {
+        event.preventDefault();
+        document.getElementById("signaturFehler").textContent =
+            "Beide Unterschriften sind erforderlich.";
+        return;
+    }
+
+    document.getElementById("unterschriftBV").value =
+        bv.canvas.toDataURL("image/png");
+
+    document.getElementById("unterschriftFahrer").value =
+        fahrer.canvas.toDataURL("image/png");
+});
+</script>
+
+{% endblock %}
