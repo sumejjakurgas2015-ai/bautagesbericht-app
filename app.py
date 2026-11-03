@@ -1673,20 +1673,73 @@ def entsorgungsdokumentation_pdf(dokument_id):
 
     y = height - 50
 
-    pdf.setFont("Helvetica-Bold", 16)
-    pdf.drawString(45, y, "PEJO Elektrotechnik")
-    y -= 30
+    # PEJO Firmenlogo
+    logo_pfad = os.path.join(
+        app.static_folder,
+        "logo.png"
+    )
 
-    pdf.setFont("Helvetica-Bold", 13)
-    pdf.drawString(45, y, "Entsorgungsdokumentation")
-    y -= 35
+    if os.path.exists(logo_pfad):
+        pdf.drawImage(
+            logo_pfad,
+            45,
+            height - 95,
+            width=75,
+            height=45,
+            preserveAspectRatio=True,
+            anchor="c",
+            mask="auto"
+        )
+
+    pdf.setFont("Helvetica-Bold", 16)
+    pdf.drawString(135, height - 70, "PEJO Elektrotechnik")
+
+    y = height - 115 
+
+    # Dokumenttitel
+    pdf.setFillColorRGB(0.12, 0.16, 0.23)
+    pdf.setFont("Helvetica-Bold", 15)
+    pdf.drawString(45, y, "ENTSORGUNGSDOKUMENTATION")
+
+    # Rote Trennlinie
+    pdf.setStrokeColorRGB(0.77, 0.0, 0.0)
+    pdf.setLineWidth(2)
+    pdf.line(45, y - 12, width - 45, y - 12)
+
+    # Standardfarbe für weiteren Text
+    pdf.setFillColorRGB(0, 0, 0)
+
+    y -= 40
 
     pdf.setFont("Helvetica", 10)
 
+     # Abschnitt: Baustellendaten
+    pdf.setFillColorRGB(0.12, 0.16, 0.23)
+    pdf.setFont("Helvetica-Bold", 11)
+    pdf.drawString(45, y, "BAUSTELLENDATEN")
+
+    pdf.setFillColorRGB(0, 0, 0)
+    y -= 25 
+
     def zeile(titel, wert):
         nonlocal y
-        pdf.drawString(45, y, f"{titel}: {wert or '-'}")
-        y -= 22
+
+        # Feldbezeichnung
+        pdf.setFont("Helvetica-Bold", 9)
+        pdf.setFillColorRGB(0.25, 0.29, 0.35)
+        pdf.drawString(45, y, f"{titel}:")
+
+        # Feldwert
+        pdf.setFont("Helvetica", 10)
+        pdf.setFillColorRGB(0, 0, 0)
+        pdf.drawString(210, y, str(wert) if wert is not None else "-")
+
+        # Dezente Trennlinie
+        pdf.setStrokeColorRGB(0.88, 0.88, 0.88)
+        pdf.setLineWidth(0.5)
+        pdf.line(45, y - 6, width - 45, y - 6)
+
+        y -= 24
 
     zeile("Dokument-Nr.", dokument["id"])
     zeile("Baustellenverantwortlicher", dokument["baustellenverantwortlicher"])
@@ -1709,9 +1762,19 @@ def entsorgungsdokumentation_pdf(dokument_id):
             pdf.showPage()
             y = height - 50
 
+        # Abschnittsüberschrift
+        pdf.setFillColorRGB(0.12, 0.16, 0.23)
         pdf.setFont("Helvetica-Bold", 11)
-        pdf.drawString(45, y, titel)
-        y -= 22
+        pdf.drawString(45, y, titel.upper())
+
+        # Rote Linie unter der Überschrift
+        pdf.setStrokeColorRGB(0.77, 0.0, 0.0)
+        pdf.setLineWidth(1)
+        pdf.line(45, y - 7, width - 45, y - 7)
+
+        # Standardfarbe wiederherstellen
+        pdf.setFillColorRGB(0, 0, 0)
+        y -= 25
 
         if isinstance(daten, str):
             daten = json.loads(daten)
@@ -1757,7 +1820,12 @@ def entsorgungsdokumentation_pdf(dokument_id):
                 pdf.drawString(55, y, textzeile)
                 y -= 15
 
-            y -= 8
+            # Trennlinie zwischen Materialien
+            pdf.setStrokeColorRGB(0.88, 0.88, 0.88)
+            pdf.setLineWidth(0.5)
+            pdf.line(55, y - 2, width - 45, y - 2)
+
+            y -= 12
 
     materialien_anzeigen(
         "Schrottmaterialien",
@@ -1774,11 +1842,20 @@ def entsorgungsdokumentation_pdf(dokument_id):
         pdf.showPage()
         y = height - 50
 
-    y -= 20
+     y -= 20
 
+    # Abschnitt: Unterschriften
+    pdf.setFillColorRGB(0.12, 0.16, 0.23)
     pdf.setFont("Helvetica-Bold", 11)
-    pdf.drawString(45, y, "Unterschriften")
-    y -= 25
+    pdf.drawString(45, y, "UNTERSCHRIFTEN")
+
+    # Rote Trennlinie
+    pdf.setStrokeColorRGB(0.77, 0.0, 0.0)
+    pdf.setLineWidth(1)
+    pdf.line(45, y - 7, width - 45, y - 7)
+
+    pdf.setFillColorRGB(0, 0, 0)
+    y -= 30
 
     def zeichne_unterschrift(titel, daten, x, position_y):
         pdf.setFont("Helvetica", 9)
