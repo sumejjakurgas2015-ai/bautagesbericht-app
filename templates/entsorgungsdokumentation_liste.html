@@ -27,6 +27,7 @@
                     <th style="padding:12px;">Baustelle</th>
                     <th style="padding:12px;">Baustellenverantwortlicher</th>
                     <th style="padding:12px;">Fahrer</th>
+                    <th style="padding:12px;">PDF</th>
                 </tr>
             </thead>
 
@@ -52,12 +53,21 @@
                     <td style="padding:12px;">
                         {{ dokument.fahrer }}
                     </td>
+                    <td style="padding:12px;">
+    <a href="{{ url_for('entsorgungsdokumentation_pdf', dokument_id=dokument.id) }}"
+       style="display:inline-block; background:#16a34a; color:white;
+              padding:9px 14px; border-radius:6px;
+              text-decoration:none; font-weight:bold;
+              white-space:nowrap;">
+        📄 Herunterladen
+    </a>
+</td>
                 </tr>
 
                 {% else %}
 
                 <tr>
-                    <td colspan="5"
+                   <td colspan="6" 
                         style="padding:25px; text-align:center;">
                         Noch keine Entsorgungsdokumentationen vorhanden.
                     </td>
