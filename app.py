@@ -1630,6 +1630,55 @@ def entsorgungsdokumentation_liste():
             conn.close()
 
 
+@app.route("/entsorgungsdokumentation/loeschen/<int:dokument_id>", methods=["POST"])
+def entsorgungsdokumentation_loeschen(dokument_id):
+    if not is_logged_in():
+        return redirect(url_for("login"))
+
+    company_id = current_company_id()
+
+    if not company_id:
+        abort(403)
+
+    conn = None
+
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+
+        cur.execute(
+            """
+            DELETE FROM entsorgungsdokumentationen
+            WHERE id = %s AND company_id = %s
+            RETURNING id
+            """,
+            (dokument_id, company_id)
+        )
+
+        geloescht = cur.fetchone()
+        conn.commit()
+
+        if geloescht:
+            flash("Dokument wurde erfolgreich gelöscht.")
+        else:
+            flash("Dokument nicht gefunden oder keine Berechtigung.")
+
+    except Exception:
+        if conn:
+            conn.rollback()
+
+        app.logger.exception(
+            "Fehler beim Löschen der Entsorgungsdokumentation"
+        )
+        flash("Dokument konnte nicht gelöscht werden.")
+
+    finally:
+        if conn:
+            conn.close()
+
+    return redirect(url_for("entsorgungsdokumentation_liste"))
+
+
 @app.route("/entsorgungsdokumentation/pdf/<int:dokument_id>")
 def entsorgungsdokumentation_pdf(dokument_id):
     if not is_logged_in():
