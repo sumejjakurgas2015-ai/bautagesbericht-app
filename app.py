@@ -1038,11 +1038,14 @@ def report_pdf(report_id):
     p.save()
 
     buffer.seek(0)
+    # PDF im Browser anzeigen oder herunterladen
+    herunterladen = request.args.get("download", "1") == "1"
+
     return send_file(
         buffer,
-        as_attachment=True,
-        download_name=f"bautagesbericht_{report_id}.pdf",
-        mimetype="application/pdf",
+        as_attachment=herunterladen,
+        download_name=f"Entsorgungsdokumentation_{dokument_id}.pdf",
+        mimetype="application/pdf"
     )
 
 
