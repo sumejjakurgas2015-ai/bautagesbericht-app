@@ -1630,6 +1630,201 @@ def entsorgungsdokumentation_liste():
             conn.close()
 
 
+@app.route("/entsorgungsdokumentation/pdf/<int:dokument_id>")
+def entsorgungsdokumentation_pdf(dokument_id):
+    if not is_logged_in():
+        return redirect(url_for("login"))
 
+    conn = None
+
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+
+        cur.execute(
+            """
+            SELECT *
+            FROM entsorgungsdokumentationen
+            WHERE id = %s AND company_id = %s
+            """,
+            (dokument_id, current_company_id())
+        )
+
+        dokument = cur.fetchone()
+
+        if not dokument:
+            flash("Dokument nicht gefunden.")
+            return redirect(url_for("entsorgungsdokumentation_liste"))
+
+    except Exception:
+        app.logger.exception(
+            "Fehler beim Laden der Entsorgungsdokumentation für PDF"
+        )
+        flash("PDF konnte nicht erstellt werden.")
+        return redirect(url_for("entsorgungsdokumentation_liste"))
+
+    finally:
+        if conn:
+            conn.close()
+        # PDF erstellen
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+
+    y = height - 50
+
+    pdf.setFont("Helvetica-Bold", 16)
+    pdf.drawString(45, y, "PEJO Elektrotechnik")
+    y -= 30
+
+    pdf.setFont("Helvetica-Bold", 13)
+    pdf.drawString(45, y, "Entsorgungsdokumentation")
+    y -= 35
+
+    pdf.setFont("Helvetica", 10)
+
+    def zeile(titel, wert):
+        nonlocal y
+        pdf.drawString(45, y, f"{titel}: {wert or '-'}")
+        y -= 22
+
+    zeile("Dokument-Nr.", dokument["id"])
+    zeile("Baustellenverantwortlicher", dokument["baustellenverantwortlicher"])
+    zeile("Baustelle", dokument["baustelle"])
+    zeile("Projekt-Nr.", dokument["projekt_nr"])
+    zeile("Datum", dokument["datum"].strftime("%d.%m.%Y"))
+    zeile("Entsorgungsweg", dokument["entsorgungsweg"])
+    zeile("Fahrer", dokument["fahrer"])
+    zeile("Übergabedatum", dokument["uebergabe_datum"].strftime("%d.%m.%Y"))
+    zeile("Übergabezeit", dokument["uebergabe_uhrzeit"].strftime("%H:%M"))
+    zeile("Übergabeort", dokument["uebergabeort"])
+
+        # Schrottmaterialien und Kabelreste
+    def materialien_anzeigen(titel, daten):
+        nonlocal y
+
+        y -= 15
+
+        if y < 100:
+            pdf.showPage()
+            y = height - 50
+
+        pdf.setFont("Helvetica-Bold", 11)
+        pdf.drawString(45, y, titel)
+        y -= 22
+
+        if isinstance(daten, str):
+            daten = json.loads(daten)
+
+        if not isinstance(daten, list):
+            daten = []
+
+        if not daten:
+            pdf.setFont("Helvetica", 9)
+            pdf.drawString(55, y, "Keine Angaben")
+            y -= 20
+            return
+
+        for material in daten:
+            if y < 100:
+                pdf.showPage()
+                y = height - 50
+
+            pdf.setFont("Helvetica", 9)
+
+            if isinstance(material, dict):
+                text = " | ".join(
+                    f"{schluessel}: {wert}"
+                    for schluessel, wert in material.items()
+                    if wert is not None and str(wert).strip()
+                )
+            else:
+                text = str(material)
+
+            if not text:
+                text = "-"
+
+            # Lange Zeilen umbrechen
+            from reportlab.lib.utils import simpleSplit
+
+            zeilen = simpleSplit(text, "Helvetica", 9, width - 110)
+
+            for textzeile in zeilen:
+                if y < 80:
+                    pdf.showPage()
+                    y = height - 50
+
+                pdf.drawString(55, y, textzeile)
+                y -= 15
+
+            y -= 8
+
+    materialien_anzeigen(
+        "Schrottmaterialien",
+        dokument["schrottmaterialien"]
+    )
+
+    materialien_anzeigen(
+        "Kabelreste",
+        dokument["kabelreste"]
+    )
+
+      # Genug Platz für beide Unterschriften sicherstellen
+    if y < 180:
+        pdf.showPage()
+        y = height - 50
+
+    y -= 20
+
+    pdf.setFont("Helvetica-Bold", 11)
+    pdf.drawString(45, y, "Unterschriften")
+    y -= 25
+
+    def zeichne_unterschrift(titel, daten, x, position_y):
+        pdf.setFont("Helvetica", 9)
+        pdf.drawString(x, position_y, titel)
+
+        if daten:
+            try:
+                bilddaten = base64.b64decode(daten.split(",", 1)[-1])
+                bild = ImageReader(BytesIO(bilddaten))
+
+                pdf.drawImage(
+                    bild,
+                    x,
+                    position_y - 95,
+                    width=220,
+                    height=80,
+                    preserveAspectRatio=True,
+                    anchor="c",
+                    mask="auto"
+                )
+            except Exception:
+                app.logger.exception("Unterschrift konnte nicht geladen werden")
+                pdf.drawString(x, position_y - 25, "Unterschrift nicht darstellbar")
+
+    zeichne_unterschrift(
+        "Baustellenverantwortlicher",
+        dokument["unterschrift_bv"],
+        45,
+        y
+    )
+
+    zeichne_unterschrift(
+        "Fahrer",
+        dokument["unterschrift_fahrer"],
+        310,
+        y
+    )
+
+    pdf.save()
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f"Entsorgungsdokumentation_{dokument_id}.pdf",
+        mimetype="application/pdf"
+    )        
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
