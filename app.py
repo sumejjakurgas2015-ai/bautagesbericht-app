@@ -1837,12 +1837,12 @@ def entsorgungsdokumentation_pdf(dokument_id):
         dokument["kabelreste"]
     )
 
-      # Genug Platz für beide Unterschriften sicherstellen
+    # Genug Platz für beide Unterschriften sicherstellen
     if y < 180:
         pdf.showPage()
         y = height - 50
 
-     y -= 20
+    y -= 20
 
     # Abschnitt: Unterschriften
     pdf.setFillColorRGB(0.12, 0.16, 0.23)
