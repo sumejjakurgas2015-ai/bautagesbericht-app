@@ -20,11 +20,13 @@ from flask import (
     flash,
     session,
     send_file,
+    abort,
 )
 
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
+from flask_wtf.csrf import CSRFProtect, generate_csrf, validate_csrf, CSRFError
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -37,6 +39,14 @@ app = Flask(
 
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
 DEFAULT_COMPANY_ID = int(os.environ.get("COMPANY_ID", "1"))
+
+# CSRF-Schutz für Löschformulare
+# Bestehende Formulare bleiben vorerst unverändert.
+app.config["WTF_CSRF_ENABLED"] = True
+app.config["WTF_CSRF_CHECK_DEFAULT"] = False
+
+# CSRF-Token in HTML-Vorlagen verfügbar machen
+app.jinja_env.globals["csrf_token"] = generate_csrf
 
 
 @app.route("/radi-li")
@@ -1634,6 +1644,12 @@ def entsorgungsdokumentation_liste():
 def entsorgungsdokumentation_loeschen(dokument_id):
     if not is_logged_in():
         return redirect(url_for("login"))
+    # CSRF-Schutz vor dem Löschen prüfen
+    try:
+        validate_csrf(request.form.get("csrf_token", ""))
+    except Exception:
+        abort(400)
+   
 
     company_id = current_company_id()
 
