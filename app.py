@@ -1838,7 +1838,7 @@ def entsorgungsdokumentation_pdf(dokument_id):
     )
 
     # Genug Platz für beide Unterschriften sicherstellen
-    if y < 180:
+    if y < 200:
         pdf.showPage()
         y = height - 50
 
@@ -1858,6 +1858,31 @@ def entsorgungsdokumentation_pdf(dokument_id):
     y -= 30
 
     def zeichne_unterschrift(titel, daten, x, position_y):
+                
+        # Rahmen für die digitale Unterschrift
+        pdf.setStrokeColorRGB(0.75, 0.78, 0.82)
+        pdf.setLineWidth(0.8)
+
+        pdf.roundRect(
+            x,
+            position_y - 105,
+            230,
+            115,
+            6,
+            stroke=1,
+            fill=0
+        )
+
+        # Unterschriftslinie
+        pdf.setStrokeColorRGB(0.55, 0.55, 0.55)
+        pdf.line(
+            x + 10,
+            position_y - 90,
+            x + 220,
+            position_y - 90
+        )
+
+        pdf.setFillColorRGB(0, 0, 0)
         pdf.setFont("Helvetica", 9)
         pdf.drawString(x, position_y, titel)
 
@@ -1868,14 +1893,15 @@ def entsorgungsdokumentation_pdf(dokument_id):
 
                 pdf.drawImage(
                     bild,
-                    x,
-                    position_y - 95,
-                    width=220,
-                    height=80,
+                    x + 10,
+                    position_y - 80,
+                    width=210,
+                    height=65,
                     preserveAspectRatio=True,
                     anchor="c",
                     mask="auto"
                 )
+                
             except Exception:
                 app.logger.exception("Unterschrift konnte nicht geladen werden")
                 pdf.drawString(x, position_y - 25, "Unterschrift nicht darstellbar")
@@ -1887,12 +1913,7 @@ def entsorgungsdokumentation_pdf(dokument_id):
         y
     )
 
-    zeichne_unterschrift(
-        "Fahrer",
-        dokument["unterschrift_fahrer"],
-        310,
-        y
-    )
+    zeichne_unterschrift("Fahrer", dokument["unterschrift_fahrer"], 315, y) 
 
     pdf.save()
     buffer.seek(0)
