@@ -1,5 +1,8 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block content %}
+
+{% set editing = report is defined and report %}
+{% set r = report if editing else {} %}
 
 <style>
 .section {
@@ -36,6 +39,7 @@ input, textarea, select {
   border: 1px solid rgba(255,255,255,0.2);
   background: rgba(255,255,255,0.05);
   color: white;
+  box-sizing: border-box;
 }
 select option {
   color: black;
@@ -99,6 +103,28 @@ button {
 .temp-wrap input {
   padding-right: 40px;
 }
+.info-box {
+  background: rgba(59,130,246,0.12);
+  border: 1px solid rgba(59,130,246,0.4);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 20px;
+}
+.action-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.cancel-btn {
+  display: inline-block;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: #64748b;
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+}
 @media (max-width: 900px) {
   .grid-2, .grid-3 {
     grid-template-columns: 1fr;
@@ -106,16 +132,40 @@ button {
 }
 </style>
 
-<h2>Neuer Bautagesbericht</h2>
+{% if editing %}
+<h2>✏️ Bautagesbericht bearbeiten – ID {{ r["id"] }}</h2>
 
-<form method="POST">
+<div class="info-box">
+  Du bearbeitest einen vorhandenen Bautagesbericht.
+  Die Änderungen werden erst nach dem Speichern übernommen.
+</div>
+{% else %}
+<h2>➕ Neuer Bautagesbericht</h2>
+{% endif %}
+
+<form
+  method="POST"
+  action="{% if editing %}{{ url_for('bericht_bearbeiten', bericht_id=r['id']) }}{% else %}{{ url_for('index') }}{% endif %}"
+  id="bericht-form"
+>
+  <input
+    type="hidden"
+    name="csrf_token"
+    value="{{ csrf_token() }}"
+  >
+
   <div class="section">
     <div class="section-title">Grunddaten</div>
 
     <div class="grid-2">
       <div>
         <label>Datum</label>
-        <input name="datum" value="{{ heute }}" required>
+        <input
+          type="date"
+          name="datum"
+          value="{{ r['datum'] if editing and r['datum'] else heute }}"
+          required
+        >
       </div>
 
       <div>
@@ -124,16 +174,24 @@ button {
         <div class="wetter-box">
           <select name="wetter">
             <option value="">Wetter wählen</option>
-            <option value="Sonnig">Sonnig</option>
-            <option value="Bewölkt">Bewölkt</option>
-            <option value="Regen">Regen</option>
-            <option value="Windig">Windig</option>
-            <option value="Kalt">Kalt</option>
-            <option value="Schnee">Schnee</option>
+
+            {% for option in ["Sonnig", "Bewölkt", "Regen", "Windig", "Kalt", "Schnee"] %}
+            <option
+              value="{{ option }}"
+              {% if editing and r["wetter"] == option %}selected{% endif %}
+            >
+              {{ option }}
+            </option>
+            {% endfor %}
           </select>
 
           <div class="temp-wrap">
-            <input type="number" name="temperatur" placeholder="23">
+            <input
+              type="number"
+              name="temperatur"
+              placeholder="23"
+              value="{{ r['temperatur'] if editing and r['temperatur'] is not none else '' }}"
+            >
             <span>°C</span>
           </div>
         </div>
@@ -142,7 +200,11 @@ button {
 
     <div style="margin-top:10px;">
       <label>Bauleiter</label>
-      <input name="bauleiter" placeholder="Name Bauleiter">
+      <input
+        name="bauleiter"
+        placeholder="Name Bauleiter"
+        value="{{ r['bauleiter'] or '' if editing else '' }}"
+      >
     </div>
   </div>
 
@@ -152,17 +214,32 @@ button {
     <div class="grid-3">
       <div>
         <label>Von</label>
-        <input type="time" name="arbeitszeit_von" value="07:00">
+        <input
+          type="time"
+          name="arbeitszeit_von"
+          value="{{ r['arbeitszeit_von']|string|truncate(5, True, '') if editing and r['arbeitszeit_von'] else '07:00' }}"
+        >
       </div>
 
       <div>
         <label>Bis</label>
-        <input type="time" name="arbeitszeit_bis" value="16:00">
+        <input
+          type="time"
+          name="arbeitszeit_bis"
+          value="{{ r['arbeitszeit_bis']|string|truncate(5, True, '') if editing and r['arbeitszeit_bis'] else '16:00' }}"
+        >
       </div>
 
       <div>
         <label>Pause (Std.)</label>
-        <input type="number" name="pause_stunden" step="0.25" min="0" placeholder="0.5">
+        <input
+          type="number"
+          name="pause_stunden"
+          step="0.25"
+          min="0"
+          placeholder="0.5"
+          value="{{ r['pause_stunden'] if editing and r['pause_stunden'] is not none else '' }}"
+        >
       </div>
     </div>
   </div>
@@ -172,12 +249,19 @@ button {
 
     <div>
       <label>Baustelle (Pflichtfeld)</label>
-      <input name="baustelle" required>
+      <input
+        name="baustelle"
+        value="{{ r['baustelle'] or '' if editing else '' }}"
+        required
+      >
     </div>
 
     <div style="margin-top:10px;">
       <label>Team / Personal</label>
-      <input name="team">
+      <input
+        name="team"
+        value="{{ r['team'] or '' if editing else '' }}"
+      >
     </div>
   </div>
 
@@ -186,59 +270,35 @@ button {
 
     <div class="grid-2">
 
+      {% for rolle, titel in [
+        ("polier", "Polier"),
+        ("vorarbeiter", "Vorarbeiter"),
+        ("facharbeiter", "Facharbeiter"),
+        ("elektriker", "Elektriker"),
+        ("helfer", "Helfer"),
+        ("lkw_fahrer", "LKW Fahrer")
+      ] %}
+
       <div>
-        <label>Polier</label>
-        <input name="polier_name">
-      </div>
-      <div>
-        <label>Polier (Stunden)</label>
-        <input type="number" name="polier_stunden" step="0.25">
+        <label>{{ titel }}</label>
+        <input
+          name="{{ rolle }}_name"
+          value="{{ r[rolle ~ '_name'] or '' if editing else '' }}"
+        >
       </div>
 
       <div>
-        <label>Vorarbeiter</label>
-        <input name="vorarbeiter_name">
-      </div>
-      <div>
-        <label>Vorarbeiter (Stunden)</label>
-        <input type="number" name="vorarbeiter_stunden" step="0.25">
-      </div>
-
-      <div>
-        <label>Facharbeiter</label>
-        <input name="facharbeiter_name">
-      </div>
-      <div>
-        <label>Facharbeiter (Stunden)</label>
-        <input type="number" name="facharbeiter_stunden" step="0.25">
+        <label>{{ titel }} (Stunden)</label>
+        <input
+          type="number"
+          name="{{ rolle }}_stunden"
+          step="0.25"
+          min="0"
+          value="{{ r[rolle ~ '_stunden'] if editing and r[rolle ~ '_stunden'] is not none else '' }}"
+        >
       </div>
 
-      <div>
-        <label>Elektriker</label>
-        <input name="elektriker_name">
-      </div>
-      <div>
-        <label>Elektriker (Stunden)</label>
-        <input type="number" name="elektriker_stunden" step="0.25">
-      </div>
-
-      <div>
-        <label>Helfer</label>
-        <input name="helfer_name">
-      </div>
-      <div>
-        <label>Helfer (Stunden)</label>
-        <input type="number" name="helfer_stunden" step="0.25">
-      </div>
-
-      <div>
-        <label>LKW Fahrer</label>
-        <input name="lkw_fahrer_name">
-      </div>
-      <div>
-        <label>LKW Fahrer (Stunden)</label>
-        <input type="number" name="lkw_fahrer_stunden" step="0.25">
-      </div>
+      {% endfor %}
 
     </div>
   </div>
@@ -248,70 +308,116 @@ button {
 
     <div>
       <label>Arbeiten</label>
-      <textarea name="arbeit"></textarea>
+      <textarea name="arbeit">{{ r['arbeit'] or '' if editing else '' }}</textarea>
     </div>
 
     <div style="margin-top:10px;">
       <label>Material</label>
-      <textarea name="material"></textarea>
+      <textarea name="material">{{ r['material'] or '' if editing else '' }}</textarea>
     </div>
 
     <div style="margin-top:10px;">
       <label>Bemerkung</label>
-      <textarea name="bemerkung"></textarea>
+      <textarea name="bemerkung">{{ r['bemerkung'] or '' if editing else '' }}</textarea>
     </div>
 
     <div style="margin-top:10px;">
       <label>Erstellt von</label>
-      <input name="ersteller" placeholder="Vorname und Nachname">
+      <input
+        name="ersteller"
+        placeholder="Vorname und Nachname"
+        value="{{ r['ersteller'] or '' if editing else '' }}"
+      >
     </div>
   </div>
 
   <div class="section">
     <div class="section-title">Elektronische Unterschrift</div>
 
-    <label>Unterschrift mit Finger oder Maus</label>
+    {% if editing and r["signature"] %}
+    <div class="info-box">
+      Eine vorhandene Unterschrift ist gespeichert.
+      Sie bleibt erhalten, solange keine neue Unterschrift gezeichnet wird.
+    </div>
+
+    <div class="signature-wrap" style="margin-bottom:15px;">
+      <img
+        src="{{ r['signature'] }}"
+        alt="Vorhandene Unterschrift"
+        style="max-width:100%; max-height:180px;"
+      >
+    </div>
+    {% endif %}
+
+    <label>
+      {% if editing %}
+      Neue Unterschrift (optional)
+      {% else %}
+      Unterschrift mit Finger oder Maus
+      {% endif %}
+    </label>
 
     <div class="signature-wrap">
       <canvas id="signature-pad"></canvas>
     </div>
 
-    <input type="hidden" name="signature" id="signature-data">
+    <input
+      type="hidden"
+      name="signature"
+      id="signature-data"
+    >
 
-    <button type="button" class="clear-btn" onclick="clearSignature()">
-      Unterschrift löschen
+    <button
+      type="button"
+      class="clear-btn"
+      onclick="clearSignature()"
+    >
+      Neue Unterschrift löschen
     </button>
   </div>
 
-  <button type="submit">Speichern</button>
+  <div class="action-row">
+    <button type="submit">
+      {% if editing %}
+      💾 Änderungen speichern
+      {% else %}
+      💾 Bericht speichern
+      {% endif %}
+    </button>
+
+    <a href="{{ url_for('list_reports') }}" class="cancel-btn">
+      Abbrechen / Zurück
+    </a>
+  </div>
 </form>
 
+{% if not editing %}
 <hr>
 
 <h3>Berichte dieser Firma:</h3>
 
 {% if reports %}
 <ul>
-{% for r in reports %}
+{% for item in reports %}
 <li>
-<strong>{{ r["baustelle"] }}</strong> –
-{{ r["arbeit"] }} –
-{{ r["created_at"] }}
+  <strong>{{ item["baustelle"] }}</strong> –
+  {{ item["arbeit"] }} –
+  {{ item["created_at"] }}
 
-{% if r["temperatur"] %}
-| {{ r["temperatur"] }} °C
-{% endif %}
+  {% if item["temperatur"] %}
+  | {{ item["temperatur"] }} °C
+  {% endif %}
 
-|
-<a href="/detail/{{ r['id'] }}">Detalji</a>
-|
-<a href="/report/pdf/{{ r['id'] }}" target="_blank">PDF</a>
-
+  |
+  <a href="/detail/{{ item['id'] }}">Detalji</a>
+  |
+  <a href="/report/pdf/{{ item['id'] }}" target="_blank">PDF</a>
 </li>
 {% endfor %}
 </ul>
 {% else %}
 <p>Keine Berichte vorhanden.</p>
+{% endif %}
 {% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
@@ -319,11 +425,14 @@ button {
 <script>
 const canvas = document.getElementById("signature-pad");
 const signatureInput = document.getElementById("signature-data");
+const berichtForm = document.getElementById("bericht-form");
 
 function resizeCanvas() {
   const ratio = Math.max(window.devicePixelRatio || 1, 1);
+
   canvas.width = canvas.offsetWidth * ratio;
   canvas.height = 200 * ratio;
+
   canvas.getContext("2d").scale(ratio, ratio);
 }
 
@@ -334,16 +443,22 @@ const signaturePad = new SignaturePad(canvas, {
   penColor: "rgb(0,0,0)"
 });
 
-window.addEventListener("resize", resizeCanvas);
+window.addEventListener("resize", function () {
+  resizeCanvas();
+  signaturePad.clear();
+  signatureInput.value = "";
+});
 
 function clearSignature() {
   signaturePad.clear();
   signatureInput.value = "";
 }
 
-document.querySelector("form").addEventListener("submit", function () {
+berichtForm.addEventListener("submit", function () {
   if (!signaturePad.isEmpty()) {
     signatureInput.value = signaturePad.toDataURL("image/png");
+  } else {
+    signatureInput.value = "";
   }
 });
 </script>
