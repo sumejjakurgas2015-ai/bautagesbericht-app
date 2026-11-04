@@ -27,13 +27,14 @@
                     <th style="padding:12px;">Baustelle</th>
                     <th style="padding:12px;">Baustellenverantwortlicher</th>
                     <th style="padding:12px;">Fahrer</th>
-                    <th style="padding:12px;">PDF</th>
+                    <th style="padding:12px;">Aktionen</th>
                 </tr>
             </thead>
 
             <tbody>
                 {% for dokument in dokumente %}
                 <tr style="border-bottom:1px solid #ddd;">
+
                     <td style="padding:12px;">
                         {{ dokument.id }}
                     </td>
@@ -53,46 +54,83 @@
                     <td style="padding:12px;">
                         {{ dokument.fahrer }}
                     </td>
-                    <td style="padding:12px;">
-    <a href="{{ url_for('entsorgungsdokumentation_pdf', dokument_id=dokument.id) }}"
-       style="display:inline-block; background:#16a34a; color:white;
-              padding:9px 14px; border-radius:6px;
-              text-decoration:none; font-weight:bold;
-              white-space:nowrap;">
-        📄 Herunterladen
-    </a>
-    <a href="{{ url_for('entsorgungsdokumentation_pdf', dokument_id=dokument.id, download=0) }}"
-   target="_blank"
-   rel="noopener"
-   style="display:inline-block; background:#2563eb; color:white;
-          padding:9px 14px; border-radius:6px;
-          text-decoration:none; font-weight:bold;
-          white-space:nowrap; margin-left:6px;">
-    👁️ Ansehen
-</a>
-<form action="{{ url_for('entsorgungsdokumentation_loeschen', dokument_id=dokument.id) }}"
-      method="POST"
-      style="display:inline-block; margin-left:6px;"
-      onsubmit="return confirm('Dokument wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.');">
 
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <td style="padding:12px; white-space:nowrap;">
 
-    <button type="submit"
-            style="background:#dc2626; color:white;
-                   padding:9px 14px; border:none;
-                   border-radius:6px; font-weight:bold;
-                   cursor:pointer; white-space:nowrap;">
-        🗑️ Löschen
-    </button>
+                        <!-- PDF HERUNTERLADEN -->
+                        <a href="{{ url_for('entsorgungsdokumentation_pdf', dokument_id=dokument.id) }}"
+                           style="display:inline-block;
+                                  background:#16a34a;
+                                  color:white;
+                                  padding:9px 14px;
+                                  border-radius:6px;
+                                  text-decoration:none;
+                                  font-weight:bold;
+                                  white-space:nowrap;">
+                            📄 Herunterladen
+                        </a>
 
-</form>                     
-</td>
+                        <!-- PDF ANSEHEN -->
+                        <a href="{{ url_for('entsorgungsdokumentation_pdf', dokument_id=dokument.id, download=0) }}"
+                           target="_blank"
+                           rel="noopener"
+                           style="display:inline-block;
+                                  background:#2563eb;
+                                  color:white;
+                                  padding:9px 14px;
+                                  border-radius:6px;
+                                  text-decoration:none;
+                                  font-weight:bold;
+                                  white-space:nowrap;
+                                  margin-left:6px;">
+                            👁️ Ansehen
+                        </a>
+
+                        <!-- DOKUMENT BEARBEITEN -->
+                        <a href="{{ url_for('entsorgungsdokumentation_bearbeiten', dokument_id=dokument.id) }}"
+                           style="display:inline-block;
+                                  background:#f59e0b;
+                                  color:#111;
+                                  padding:9px 14px;
+                                  border-radius:6px;
+                                  text-decoration:none;
+                                  font-weight:bold;
+                                  white-space:nowrap;
+                                  margin-left:6px;">
+                            ✏️ Bearbeiten
+                        </a>
+
+                        <!-- DOKUMENT LÖSCHEN -->
+                        <form action="{{ url_for('entsorgungsdokumentation_loeschen', dokument_id=dokument.id) }}"
+                              method="POST"
+                              style="display:inline-block; margin-left:6px;"
+                              onsubmit="return confirm('Dokument wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.');">
+
+                            <input type="hidden"
+                                   name="csrf_token"
+                                   value="{{ csrf_token() }}">
+
+                            <button type="submit"
+                                    style="background:#dc2626;
+                                           color:white;
+                                           padding:9px 14px;
+                                           border:none;
+                                           border-radius:6px;
+                                           font-weight:bold;
+                                           cursor:pointer;
+                                           white-space:nowrap;">
+                                🗑️ Löschen
+                            </button>
+
+                        </form>
+
+                    </td>
                 </tr>
 
                 {% else %}
 
                 <tr>
-                   <td colspan="6" 
+                    <td colspan="6"
                         style="padding:25px; text-align:center;">
                         Noch keine Entsorgungsdokumentationen vorhanden.
                     </td>
