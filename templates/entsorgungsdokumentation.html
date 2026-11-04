@@ -138,21 +138,38 @@
         >
     </div>
 
-    <form id="entsorgungForm" method="POST">
+    <form id="entsorgungForm"
+      method="POST"
+      action="{{ url_for('entsorgungsdokumentation_bearbeiten', dokument_id=dokument.id) if dokument is defined and dokument else url_for('entsorgungsdokumentation') }}">
+        {% if dokument is defined and dokument %}
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <p style="color:#14532d; font-weight:bold;">✏️ Dokument Nr. {{ dokument.id }} bearbeiten</p>
+        {% endif %}
 
         <h2>1. Angaben zur Baustelle</h2>
 
-        <label>Baustellenverantwortlicher (BV)</label>
-        <input type="text" name="baustellenverantwortlicher" required>
+<label>Baustellenverantwortlicher (BV)</label>
+<input type="text"
+        name="baustellenverantwortlicher"
+        value="{{ dokument.baustellenverantwortlicher if dokument is defined and dokument else '' }}"
+        required>
 
-        <label>Baustelle / Bauvorhaben</label>
-        <input type="text" name="baustelle" required>
+<label>Baustelle / Bauvorhaben</label>
+<input type="text"
+       name="baustelle"
+       value="{{ dokument.baustelle if dokument is defined and dokument else '' }}"
+       required>
 
-        <label>Auftrags- / Projekt-Nr.</label>
-        <input type="text" name="projekt_nr">
+<label>Auftrags- / Projekt-Nr.</label>
+<input type="text"
+       name="projekt_nr"
+       value="{{ dokument.projekt_nr if dokument is defined and dokument else '' }}"> 
 
-        <label>Datum</label>
-        <input type="date" name="datum" required>
+<label>Datum</label>
+<input type="date"
+       name="datum"
+       value="{{ dokument.datum|string if dokument is defined and dokument and dokument.datum else '' }}"
+       required> 
 
 
         <h2>2. Erfassung der angefallenen Schrottmaterialien</h2>
@@ -180,21 +197,32 @@
                         <td>{{ material }}</td>
                         <td>
                             <input type="text"
-                                   name="schrott_beschreibung_{{ loop.index }}">
+                                   name="schrott_beschreibung_{{ loop.index }}"
+                                   value="{{ (dokument.schrottmaterialien | selectattr('material', 'equalto', material) | map(attribute='beschreibung') | first | default('', true)) if dokument is defined and dokument else '' }}">
                         </td>
                         <td>
                             <input type="number"
                                    name="schrott_menge_{{ loop.index }}"
-                                   min="0" step="0.01">
+                                   min="0"
+                                   step="0.01"
+                                   value="{{ (dokument.schrottmaterialien | selectattr('material', 'equalto', material) | map(attribute='menge') | first | default('', true)) if dokument is defined and dokument else '' }}">
                         </td>
                         <td>
-                            <select name="schrott_einheit_{{ loop.index }}">
-                                <option value="Stk.">Stk.</option>
-                                <option value="kg">kg</option>
-                                <option value="t">t</option>
-                                <option value="m">m</option>
-                                <option value="m³">m³</option>
-                            </select>
+                            {% set einheit = (
+    dokument.schrottmaterialien
+    | selectattr('material', 'equalto', material)
+    | map(attribute='einheit')
+    | first
+    | default('Stk.', true)
+) if dokument is defined and dokument else 'Stk.' %}
+
+<select name="schrott_einheit_{{ loop.index }}">
+    <option value="Stk." {% if einheit == 'Stk.' %}selected{% endif %}>Stk.</option>
+    <option value="kg" {% if einheit == 'kg' %}selected{% endif %}>kg</option>
+    <option value="t" {% if einheit == 't' %}selected{% endif %}>t</option>
+    <option value="m" {% if einheit == 'm' %}selected{% endif %}>m</option>
+    <option value="m³" {% if einheit == 'm³' %}selected{% endif %}>m³</option>
+</select>
                         </td>
                     </tr>
                     {% endfor %}
@@ -227,19 +255,26 @@
                         <td>{{ material }}</td>
                         <td>
                             <input type="text"
-                                   name="kabel_beschreibung_{{ loop.index }}">
+                                   name="kabel_beschreibung_{{ loop.index }}"
+                                   value="{{ (dokument.kabelreste | selectattr('material', 'equalto', material) | map(attribute='beschreibung') | first | default('', true)) if dokument is defined and dokument else '' }}">
                         </td>
                         <td>
                             <input type="number"
                                    name="kabel_menge_{{ loop.index }}"
-                                   min="0" step="0.01">
+                                   min="0" step="0.01"
+                                   value="{{ (dokument.kabelreste | selectattr('material', 'equalto', material) | map(attribute='menge') | first | default('', true)) if dokument is defined and dokument else '' }}">
                         </td>
                         <td>
+                            {% set kabel_einheit = (
+                                dokument.kabelreste
+                                | selectattr('material', 'equalto', material)
+                                | map(attribute='einheit') | first | default('m', true)
+                            ) if dokument is defined and dokument else 'm' %}
                             <select name="kabel_einheit_{{ loop.index }}">
-                                <option value="m">m</option>
-                                <option value="kg">kg</option>
-                                <option value="Stk.">Stk.</option>
-                                <option value="t">t</option>
+                                <option value="m" {% if kabel_einheit == 'm' %}selected{% endif %}>m</option>
+                                <option value="kg" {% if kabel_einheit == 'kg' %}selected{% endif %}>kg</option>
+                                <option value="Stk." {% if kabel_einheit == 'Stk.' %}selected{% endif %}>Stk.</option>
+                                <option value="t" {% if kabel_einheit == 't' %}selected{% endif %}>t</option>
                             </select>
                         </td>
                     </tr>
@@ -255,6 +290,7 @@
             <input type="radio"
                    name="entsorgungsweg"
                    value="PEJO-Fahrer LKW"
+                   {% if dokument is defined and dokument and dokument.entsorgungsweg == 'PEJO-Fahrer LKW' %}checked{% endif %}
                    required>
             Rückführung über PEJO-Fahrer (LKW)
         </label>
@@ -262,21 +298,22 @@
         <label class="check-option">
             <input type="radio"
                    name="entsorgungsweg"
-                   value="BV Firmenfahrzeug">
+                   value="BV Firmenfahrzeug"
+                   {% if dokument is defined and dokument and dokument.entsorgungsweg == 'BV Firmenfahrzeug' %}checked{% endif %}>
             Rückführung durch BV im Firmenfahrzeug
         </label>
 
         <label>Name des Fahrers / Übernehmers</label>
-        <input type="text" name="fahrer" required>
+        <input type="text" name="fahrer" value="{{ dokument.fahrer|string if dokument is defined and dokument and dokument.fahrer is not none else '' }}" required>
 
         <label>Datum der Übergabe</label>
-        <input type="date" name="uebergabe_datum" required>
+        <input type="date" name="uebergabe_datum" value="{{ dokument.uebergabe_datum|string if dokument is defined and dokument and dokument.uebergabe_datum is not none else '' }}" required>
 
         <label>Uhrzeit der Übergabe</label>
-        <input type="time" name="uebergabe_uhrzeit" required>
+        <input type="time" name="uebergabe_uhrzeit" value="{{ dokument.uebergabe_uhrzeit|string|truncate(5, True, '') if dokument is defined and dokument and dokument.uebergabe_uhrzeit else '' }}" required>
 
         <label>Übergabeort</label>
-        <input type="text" name="uebergabeort" required>
+        <input type="text" name="uebergabeort" value="{{ dokument.uebergabeort|string if dokument is defined and dokument and dokument.uebergabeort is not none else '' }}" required>
 
 
         <h2>5. Bestätigung und Unterschriften</h2>
@@ -293,13 +330,15 @@
             Unterschrift löschen
         </button>
 
-        <input type="hidden" name="unterschrift_bv" id="unterschriftBV">
-        <input type="hidden" name="unterschrift_fahrer" id="unterschriftFahrer">
+        <input type="hidden" name="unterschrift_bv" id="unterschriftBV"
+               value="{{ dokument.unterschrift_bv if dokument is defined and dokument else '' }}">
+        <input type="hidden" name="unterschrift_fahrer" id="unterschriftFahrer"
+               value="{{ dokument.unterschrift_fahrer if dokument is defined and dokument else '' }}">
 
         <p id="signaturFehler" style="color:#c40000;"></p>
 
         <button type="submit" class="save-btn">
-            💾 Entsorgungsdokumentation speichern
+            {% if dokument is defined and dokument %}💾 Änderungen speichern{% else %}💾 Entsorgungsdokumentation speichern{% endif %}
         </button>
 
     </form>
@@ -308,19 +347,29 @@
 <script>
 const unterschriften = {};
 
-function setupSignature(id) {
+function setupSignature(id, hiddenId) {
     const canvas = document.getElementById(id);
     const ctx = canvas.getContext("2d");
+    const hidden = document.getElementById(hiddenId);
 
     canvas.width = canvas.clientWidth;
     canvas.height = 160;
-
     ctx.strokeStyle = "#111";
     ctx.lineWidth = 2;
     ctx.lineCap = "round";
 
     let drawing = false;
     let signed = false;
+    let signatureData = hidden.value || "";
+
+    // Bestehende Unterschrift anzeigen, ohne sie zu überschreiben.
+    if (signatureData.startsWith("data:image/png;base64,")) {
+        const image = new Image();
+        image.onload = () => {
+            if (!signed) ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+        };
+        image.src = signatureData;
+    }
 
     function position(event) {
         const rect = canvas.getBoundingClientRect();
@@ -331,11 +380,14 @@ function setupSignature(id) {
     }
 
     canvas.addEventListener("pointerdown", event => {
+        if (!signed) {
+            // Beim ersten neuen Strich die alte Unterschrift ersetzen.
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            signatureData = "";
+        }
         drawing = true;
         signed = true;
-
         canvas.setPointerCapture(event.pointerId);
-
         const p = position(event);
         ctx.beginPath();
         ctx.moveTo(p.x, p.y);
@@ -343,26 +395,23 @@ function setupSignature(id) {
 
     canvas.addEventListener("pointermove", event => {
         if (!drawing) return;
-
         const p = position(event);
         ctx.lineTo(p.x, p.y);
         ctx.stroke();
     });
 
-    canvas.addEventListener("pointerup", () => {
-        drawing = false;
-    });
-
-    canvas.addEventListener("pointercancel", () => {
-        drawing = false;
-    });
+    function stopDrawing() { drawing = false; }
+    canvas.addEventListener("pointerup", stopDrawing);
+    canvas.addEventListener("pointercancel", stopDrawing);
 
     unterschriften[id] = {
-        canvas: canvas,
-        isSigned: () => signed,
+        hasSignature: () => signed || signatureData.startsWith("data:image/png;base64,"),
+        getData: () => signed ? canvas.toDataURL("image/png") : signatureData,
         clear: () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             signed = false;
+            signatureData = "";
+            hidden.value = "";
         }
     };
 }
@@ -371,27 +420,23 @@ function clearSignature(id) {
     unterschriften[id].clear();
 }
 
-setupSignature("signBV");
-setupSignature("signFahrer");
+setupSignature("signBV", "unterschriftBV");
+setupSignature("signFahrer", "unterschriftFahrer");
 
 document.getElementById("entsorgungForm").addEventListener("submit", function(event) {
     const bv = unterschriften["signBV"];
     const fahrer = unterschriften["signFahrer"];
 
-    if (!bv.isSigned() || !fahrer.isSigned()) {
+    if (!bv.hasSignature() || !fahrer.hasSignature()) {
         event.preventDefault();
         document.getElementById("signaturFehler").textContent =
             "Beide Unterschriften sind erforderlich.";
         return;
     }
 
-    document.getElementById("unterschriftBV").value =
-        bv.canvas.toDataURL("image/png");
+    document.getElementById("unterschriftBV").value = bv.getData();
+    document.getElementById("unterschriftFahrer").value = fahrer.getData();
 
-    document.getElementById("unterschriftFahrer").value =
-        fahrer.canvas.toDataURL("image/png");
-    
-        // Spriječi ponovno slanje obrasca.
     const saveButton = this.querySelector('button[type="submit"]');
     saveButton.disabled = true;
     saveButton.textContent = "⏳ Dokument wird gespeichert...";
