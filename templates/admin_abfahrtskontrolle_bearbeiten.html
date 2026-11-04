@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div style="max-width:750px; margin:30px auto; padding:25px;
+            background:#1e293b; color:white; border-radius:12px;">
+
+    <h1 style="text-align:center;">
+        ✏️ Abfahrtskontrolle bearbeiten
+    </h1>
+
+    <p style="text-align:center;">
+        Kontrolle Nr. {{ kontrola['id'] }}
+    </p>
+
+    <p style="text-align:center; color:#fbbf24;">
+        🔒 Unterschriebene Kontrollen können nicht bearbeitet werden.
+    </p>
+
+    <form
+        method="POST"
+        action="{{ url_for('admin_abfahrtskontrolle_bearbeiten', kontrola_id=kontrola['id']) }}"
+    >
+
+        <input
+            type="hidden"
+            name="csrf_token"
+            value="{{ csrf_token() }}"
+        >
+
+        <!-- DATUM -->
+        <div style="margin-bottom:18px;">
+            <label for="datum">
+                <strong>Datum *</strong>
+            </label>
+
+            <input
+                type="date"
+                id="datum"
+                name="datum"
+                value="{{ kontrola['datum'].isoformat() if kontrola['datum'] else '' }}"
+                required
+                style="width:100%; padding:12px; margin-top:6px;
+                       border-radius:6px; border:1px solid #64748b;
+                       box-sizing:border-box;"
+            >
+        </div>
+
+        <!-- FAHRZEUG -->
+        <div style="margin-bottom:18px;">
+            <label for="fahrzeug">
+                <strong>Fahrzeug / Anhänger</strong>
+            </label>
+
+            <input
+                type="text"
+                id="fahrzeug"
+                name="fahrzeug"
+                value="{{ kontrola['fahrzeug'] or '' }}"
+                style="width:100%; padding:12px; margin-top:6px;
+                       border-radius:6px; border:1px solid #64748b;
+                       box-sizing:border-box;"
+            >
+        </div>
+
+        <!-- KENNZEICHEN -->
+        <div style="margin-bottom:18px;">
+            <label for="kennzeichen">
+                <strong>Kennzeichen</strong>
+            </label>
+
+            <input
+                type="text"
+                id="kennzeichen"
+                name="kennzeichen"
+                value="{{ kontrola['kennzeichen'] or '' }}"
+                style="width:100%; padding:12px; margin-top:6px;
+                       border-radius:6px; border:1px solid #64748b;
+                       box-sizing:border-box;"
+            >
+        </div>
+
+        <!-- FAHRER -->
+        <div style="margin-bottom:18px;">
+            <label for="fahrer">
+                <strong>Fahrer</strong>
+            </label>
+
+            <input
+                type="text"
+                id="fahrer"
+                name="fahrer"
+                value="{{ kontrola['fahrer'] or '' }}"
+                style="width:100%; padding:12px; margin-top:6px;
+                       border-radius:6px; border:1px solid #64748b;
+                       box-sizing:border-box;"
+            >
+        </div>
+
+        <!-- FAHRZEUG IN ORDNUNG -->
+        <div style="margin-bottom:18px;">
+            <label style="display:flex; align-items:center; gap:10px;">
+                <input
+                    type="checkbox"
+                    name="ist_ok"
+                    {% if kontrola['ist_ok'] %}checked{% endif %}
+                    style="width:22px; height:22px;"
+                >
+
+                <strong>Fahrzeug in Ordnung (i.O.)</strong>
+            </label>
+        </div>
+
+        <!-- MÄNGEL -->
+        <div style="margin-bottom:25px;">
+            <label for="maengel">
+                <strong>Mängel</strong>
+            </label>
+
+            <textarea
+                id="maengel"
+                name="maengel"
+                rows="4"
+                placeholder="Keine / Beschreibung der Mängel"
+                style="width:100%; padding:12px; margin-top:6px;
+                       border-radius:6px; border:1px solid #64748b;
+                       box-sizing:border-box;"
+            >{{ kontrola['maengel'] or '' }}</textarea>
+        </div>
+
+        <!-- AKTIONEN -->
+        <div style="display:flex; flex-wrap:wrap; gap:12px;
+                    justify-content:center;">
+
+            <button
+                type="submit"
+                style="background:#16a34a; color:white;
+                       padding:13px 25px; border:none;
+                       border-radius:7px; font-size:16px;
+                       font-weight:bold; cursor:pointer;"
+            >
+                💾 Änderungen speichern
+            </button>
+
+            <a
+                href="{{ url_for('admin_abfahrtskontrollen') }}"
+                style="background:#64748b; color:white;
+                       padding:13px 25px; border-radius:7px;
+                       text-decoration:none; font-size:16px;
+                       font-weight:bold;"
+            >
+                ❌ Abbrechen
+            </a>
+
+        </div>
+
+    </form>
+
+</div>
+
+{% endblock %}
