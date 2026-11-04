@@ -728,7 +728,9 @@ def admin_abfahrtskontrolle_loeschen(kontrola_id):
         if conn:
             conn.close()
 
- @app.route("/admin/abfahrtskontrollen/bearbeiten/<int:kontrola_id>", methods=["GET", "POST"])
+    return redirect(url_for("admin_abfahrtskontrollen"))
+
+@app.route("/admin/abfahrtskontrollen/bearbeiten/<int:kontrola_id>", methods=["GET", "POST"])
 def admin_abfahrtskontrolle_bearbeiten(kontrola_id):
     if not is_logged_in():
         return redirect(url_for("login"))
