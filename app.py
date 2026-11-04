@@ -1,4 +1,4 @@
-import os
+
 import base64
 import uuid
 import json
@@ -1592,6 +1592,143 @@ def entsorgungsdokumentation():
                 conn.close()
 
     return render_template("entsorgungsdokumentation.html")
+
+@app.route("/entsorgungsdokumentation/bearbeiten/<int:dokument_id>", methods=["GET", "POST"])
+def entsorgungsdokumentation_bearbeiten(dokument_id):
+    if not is_logged_in():
+        return redirect(url_for("login"))
+
+    company_id = current_company_id()
+    if not company_id:
+        abort(403)
+
+    if request.method == "POST":
+        try:
+            validate_csrf(request.form.get("csrf_token", ""))
+        except Exception:
+            abort(400)
+
+    conn = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT * FROM entsorgungsdokumentationen WHERE id = %s AND company_id = %s",
+            (dokument_id, company_id),
+        )
+        dokument = cur.fetchone()
+        if not dokument:
+            abort(404)
+
+        if request.method == "GET":
+            # JSONB wird von psycopg2 normalerweise bereits als Liste geliefert.
+            dokument = dict(dokument)
+            for feld in ("schrottmaterialien", "kabelreste"):
+                wert = dokument.get(feld)
+                if isinstance(wert, str):
+                    wert = json.loads(wert)
+                dokument[feld] = wert if isinstance(wert, list) else []
+            return render_template("entsorgungsdokumentation.html", dokument=dokument)
+
+        felder = {
+            "baustellenverantwortlicher": (request.form.get("baustellenverantwortlicher") or "").strip(),
+            "baustelle": (request.form.get("baustelle") or "").strip(),
+            "projekt_nr": (request.form.get("projekt_nr") or "").strip(),
+            "datum": (request.form.get("datum") or "").strip(),
+            "entsorgungsweg": (request.form.get("entsorgungsweg") or "").strip(),
+            "fahrer": (request.form.get("fahrer") or "").strip(),
+            "uebergabe_datum": (request.form.get("uebergabe_datum") or "").strip(),
+            "uebergabe_uhrzeit": (request.form.get("uebergabe_uhrzeit") or "").strip(),
+            "uebergabeort": (request.form.get("uebergabeort") or "").strip(),
+        }
+        pflichtfelder = (
+            "baustellenverantwortlicher", "baustelle", "datum", "entsorgungsweg",
+            "fahrer", "uebergabe_datum", "uebergabe_uhrzeit", "uebergabeort",
+        )
+        if any(not felder[feld] for feld in pflichtfelder):
+            flash("Bitte alle Pflichtfelder ausfüllen.")
+            return redirect(url_for("entsorgungsdokumentation_bearbeiten", dokument_id=dokument_id))
+        if felder["entsorgungsweg"] not in ("PEJO-Fahrer LKW", "BV Firmenfahrzeug"):
+            flash("Ungültiger Entsorgungsweg.")
+            return redirect(url_for("entsorgungsdokumentation_bearbeiten", dokument_id=dokument_id))
+
+        schrott_namen = [
+            "Kabelgarnituren", "Kabelverteiler / Hausanschluss- und Zählerschränke",
+            "Betriebsmittel", "Beleuchtung", "Stahl / Eisen", "Sonstige Materialien",
+        ]
+        kabel_namen = [
+            "Kupferkabel / Kupferleitungen", "Aluminiumkabel",
+            "Kabel mit Bleimantel / Massekabel", "Kabelschutzrohre / Abdeckhauben",
+            "Sonstiges",
+        ]
+        schrottmaterialien = []
+        kabelreste = []
+        for prefix, namen, ziel in (
+            ("schrott", schrott_namen, schrottmaterialien),
+            ("kabel", kabel_namen, kabelreste),
+        ):
+            for nummer, material in enumerate(namen, start=1):
+                beschreibung = (request.form.get(f"{prefix}_beschreibung_{nummer}") or "").strip()
+                menge = (request.form.get(f"{prefix}_menge_{nummer}") or "").strip()
+                einheit = (request.form.get(f"{prefix}_einheit_{nummer}") or "").strip()
+                if menge or beschreibung:
+                    ziel.append({
+                        "material": material, "beschreibung": beschreibung,
+                        "menge": menge, "einheit": einheit,
+                    })
+
+        potpisi = []
+        for naziv in ("unterschrift_bv", "unterschrift_fahrer"):
+            potpis = (request.form.get(naziv) or "").strip()
+            if not potpis.startswith("data:image/png;base64,"):
+                flash("Beide Unterschriften sind erforderlich.")
+                return redirect(url_for("entsorgungsdokumentation_bearbeiten", dokument_id=dokument_id))
+            try:
+                bild = base64.b64decode(potpis.split(",", 1)[1], validate=True)
+                if not (100 <= len(bild) <= 500000) or not bild.startswith(b"\x89PNG\r\n\x1a\n"):
+                    raise ValueError("Ungültiges PNG")
+            except (ValueError, base64.binascii.Error):
+                flash("Ungültige Unterschrift.")
+                return redirect(url_for("entsorgungsdokumentation_bearbeiten", dokument_id=dokument_id))
+            potpisi.append(potpis)
+
+        cur.execute(
+            """
+            UPDATE entsorgungsdokumentationen
+            SET baustellenverantwortlicher = %s, baustelle = %s, projekt_nr = %s,
+                datum = %s, schrottmaterialien = %s::jsonb, kabelreste = %s::jsonb,
+                entsorgungsweg = %s, fahrer = %s, uebergabe_datum = %s,
+                uebergabe_uhrzeit = %s, uebergabeort = %s,
+                unterschrift_bv = %s, unterschrift_fahrer = %s
+            WHERE id = %s AND company_id = %s
+            RETURNING id
+            """,
+            (
+                felder["baustellenverantwortlicher"], felder["baustelle"],
+                felder["projekt_nr"], felder["datum"], json.dumps(schrottmaterialien),
+                json.dumps(kabelreste), felder["entsorgungsweg"], felder["fahrer"],
+                felder["uebergabe_datum"], felder["uebergabe_uhrzeit"],
+                felder["uebergabeort"], potpisi[0], potpisi[1], dokument_id, company_id,
+            ),
+        )
+        if not cur.fetchone():
+            abort(404)
+        conn.commit()
+        flash(f"Entsorgungsdokumentation Nr. {dokument_id} aktualisiert.")
+        return redirect(url_for("entsorgungsdokumentation_liste"))
+    except Exception as fehler:
+        from werkzeug.exceptions import HTTPException
+        if isinstance(fehler, HTTPException):
+            raise
+        if conn:
+            conn.rollback()
+        app.logger.exception("Fehler beim Bearbeiten der Entsorgungsdokumentation")
+        flash("Dokument konnte nicht bearbeitet werden.")
+        return redirect(url_for("entsorgungsdokumentation_liste"))
+    finally:
+        if conn:
+            conn.close()
+
 
 @app.route("/entsorgungsdokumentation/liste")
 def entsorgungsdokumentation_liste():
