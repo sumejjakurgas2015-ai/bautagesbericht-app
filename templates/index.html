@@ -4,6 +4,19 @@
 {% set editing = report is defined and report %}
 {% set r = report if editing else {} %}
 
+<div style="margin: 15px 0 20px 0;">
+  <a href="{{ url_for('dashboard') }}"
+     style="display:inline-block;
+            padding:10px 18px;
+            background:#dc2626;
+            color:white;
+            text-decoration:none;
+            border-radius:10px;
+            font-weight:bold;">
+    ⬅ Zurück zum Dashboard
+  </a>
+</div>
+
 <style>
 .section {
   border: 1px solid rgba(255,255,255,0.1);
