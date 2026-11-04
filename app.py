@@ -682,6 +682,154 @@ def admin_abfahrtskontrolle_pdf(kontrola_id):
         download_name=f"abfahrtskontrolle_{kontrola_id}.pdf",
         mimetype="application/pdf",
     )
+@app.route("/admin/abfahrtskontrollen/loeschen/<int:kontrola_id>", methods=["POST"])
+def admin_abfahrtskontrolle_loeschen(kontrola_id):
+    if not is_logged_in():
+        return redirect(url_for("login"))
+
+    if not is_admin():
+        return "Zugriff verweigert", 403
+
+    try:
+        validate_csrf(request.form.get("csrf_token", ""))
+    except Exception:
+        abort(400, description="Ungültiger CSRF-Token")
+
+    company_id = current_company_id()
+    conn = None
+
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+
+        cur.execute(
+            """
+            DELETE FROM abfahrtskontrollen
+            WHERE id = %s AND company_id = %s
+            """,
+            (kontrola_id, company_id)
+        )
+
+        geloescht = cur.rowcount
+        conn.commit()
+
+        if geloescht:
+            flash("Abfahrtskontrolle erfolgreich gelöscht.", "success")
+        else:
+            flash("Abfahrtskontrolle nicht gefunden.", "warning")
+
+    except Exception:
+        if conn:
+            conn.rollback()
+        app.logger.exception("Fehler beim Löschen der Abfahrtskontrolle")
+        flash("Fehler beim Löschen der Abfahrtskontrolle.", "error")
+
+    finally:
+        if conn:
+            conn.close()
+
+ @app.route("/admin/abfahrtskontrollen/bearbeiten/<int:kontrola_id>", methods=["GET", "POST"])
+def admin_abfahrtskontrolle_bearbeiten(kontrola_id):
+    if not is_logged_in():
+        return redirect(url_for("login"))
+
+    if not is_admin():
+        abort(403)
+
+    company_id = current_company_id()
+    conn = None
+
+    try:
+        conn = get_db()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+
+        cur.execute(
+            """
+            SELECT id, datum, fahrzeug, kennzeichen, fahrer,
+                   ist_ok, maengel, unterschrift
+            FROM abfahrtskontrollen
+            WHERE id = %s AND company_id = %s
+            """,
+            (kontrola_id, company_id)
+        )
+        kontrola = cur.fetchone()
+
+        if not kontrola:
+            abort(404)
+
+        if kontrola["unterschrift"]:
+            flash("Unterschriebene Kontrollen können nicht bearbeitet werden.", "warning")
+            return redirect(url_for("admin_abfahrtskontrollen"))
+
+        if request.method == "POST":
+            try:
+                validate_csrf(request.form.get("csrf_token", ""))
+            except Exception:
+                abort(400, description="Ungültiger CSRF-Token")
+
+            datum = (request.form.get("datum") or "").strip()
+            fahrzeug = (request.form.get("fahrzeug") or "").strip()
+            kennzeichen = (request.form.get("kennzeichen") or "").strip()
+            fahrer = (request.form.get("fahrer") or "").strip()
+            ist_ok = request.form.get("ist_ok") == "on"
+            maengel = (request.form.get("maengel") or "").strip()
+
+            if not datum:
+                flash("Datum ist erforderlich.", "error")
+                return redirect(url_for(
+                    "admin_abfahrtskontrolle_bearbeiten",
+                    kontrola_id=kontrola_id
+                ))
+
+            cur.execute(
+                """
+                UPDATE abfahrtskontrollen
+                SET datum = %s,
+                    fahrzeug = %s,
+                    kennzeichen = %s,
+                    fahrer = %s,
+                    ist_ok = %s,
+                    maengel = %s,
+                    updated_at = NOW()
+                WHERE id = %s
+                  AND company_id = %s
+                  AND (unterschrift IS NULL OR unterschrift = '')
+                """,
+                (
+                    datum, fahrzeug, kennzeichen, fahrer,
+                    ist_ok, maengel, kontrola_id, company_id
+                )
+            )
+
+            if cur.rowcount == 0:
+                conn.rollback()
+                flash("Kontrolle wurde bereits unterschrieben oder nicht gefunden.", "warning")
+                return redirect(url_for("admin_abfahrtskontrollen"))
+
+            conn.commit()
+            flash("Abfahrtskontrolle erfolgreich aktualisiert.", "success")
+            return redirect(url_for("admin_abfahrtskontrollen"))
+
+        return render_template(
+            "admin_abfahrtskontrolle_bearbeiten.html",
+            kontrola=kontrola
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception:
+        if conn:
+            conn.rollback()
+        app.logger.exception("Fehler beim Bearbeiten der Abfahrtskontrolle")
+        flash("Fehler beim Bearbeiten der Abfahrtskontrolle.", "error")
+        return redirect(url_for("admin_abfahrtskontrollen"))
+
+    finally:
+        if conn:
+            conn.close()   
+
+    return redirect(url_for("admin_abfahrtskontrollen"))    
 
 @app.route("/abfahrtskontrolle", methods=["GET", "POST"])
 def abfahrtskontrolle():
