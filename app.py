@@ -1279,6 +1279,13 @@ def bericht_bearbeiten(bericht_id):
             flash("Bericht nicht gefunden oder keine Berechtigung.", "error")
             return redirect(url_for("list_reports"))
 
+        if report["signature"]:
+            flash(
+                "Unterschriebene Bautagesberichte können nicht bearbeitet werden.",
+                "warning",
+            )
+            return redirect(url_for("list_reports"))
+
         if request.method == "POST":
             try:
                 validate_csrf(request.form.get("csrf_token", ""))
@@ -1355,12 +1362,16 @@ def bericht_bearbeiten(bericht_id):
                 f"{spalte} = %s" for spalte in spalten
             )
 
-            if is_admin():
-                where_sql = "id = %s AND company_id = %s"
+           if is_admin():
+                where_sql = (
+                    "id = %s AND company_id = %s "
+                    "AND (signature IS NULL OR signature = '')"
+                )
                 where_params = (bericht_id, company_id)
             else:
                 where_sql = (
-                    "id = %s AND company_id = %s AND user_id = %s"
+                    "id = %s AND company_id = %s AND user_id = %s "
+                    "AND (signature IS NULL OR signature = '')"
                 )
                 where_params = (
                     bericht_id,
