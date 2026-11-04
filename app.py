@@ -611,6 +611,7 @@ def admin_abfahrtskontrolle_pdf(kontrola_id):
 
     if not is_admin():
         return "Zugriff verweigert", 403
+
     company_id = current_company_id()
 
     conn = get_db()
@@ -624,12 +625,13 @@ def admin_abfahrtskontrolle_pdf(kontrola_id):
             FROM abfahrtskontrollen
             WHERE id = %s AND company_id = %s
             """,
-            (kontrola_id, company_id)
+            (kontrola_id, company_id),
         )
         kontrola = cur.fetchone()
     finally:
         cur.close()
         conn.close()
+
     if not kontrola:
         return "Kontrolle nicht gefunden", 404
 
@@ -639,36 +641,205 @@ def admin_abfahrtskontrolle_pdf(kontrola_id):
 
     p.setTitle("Taegliche Abfahrtskontrolle")
 
+    # PEJO Farben – identisch mit Bautagesbericht
+    red = (237 / 255, 28 / 255, 36 / 255)
+    dark_grey = (107 / 255, 107 / 255, 107 / 255)
+    light_grey = (242 / 255, 242 / 255, 242 / 255)
+    medium_grey = (217 / 255, 217 / 255, 217 / 255)
+
+    # Roter Kopfbereich
+    p.setFillColorRGB(*red)
+    p.rect(0, height - 72, width, 72, fill=1, stroke=0)
+
+    # PEJO Logo
+    logo_path = os.path.join(BASE_DIR, "static", "logo.png")
+
+    if os.path.exists(logo_path):
+        try:
+            p.drawImage(
+                logo_path,
+                18,
+                height - 64,
+                width=78,
+                height=46,
+                preserveAspectRatio=True,
+                mask="auto",
+            )
+        except Exception:
+            app.logger.exception("PEJO Logo konnte nicht geladen werden")
+
+    # Titel
+    p.setFillColorRGB(1, 1, 1)
     p.setFont("Helvetica-Bold", 18)
-    p.drawString(50, height - 60, "Taegliche Abfahrtskontrolle")
+    p.drawString(110, height - 42, "ABFAHRTSKONTROLLE")
 
-    p.setFont("Helvetica", 11)
-    p.drawString(50, height - 100, "PEJO Elektrotechnik GmbH")
+    p.setFont("Helvetica", 10)
+    p.drawString(110, height - 60, "Taegliche Fahrzeugkontrolle")
 
-    p.setFont("Helvetica", 11)
+    # Seitenrahmen
+    p.setStrokeColorRGB(*medium_grey)
+    p.rect(
+        25,
+        25,
+        width - 50,
+        height - 122,
+        stroke=1,
+        fill=0,
+    )
 
-    p.drawString(50, height - 150, f"Datum: {kontrola['datum'].strftime('%d.%m.%Y')}")
-    p.drawString(50, height - 175, f"Fahrzeug: {pdf_text(kontrola['fahrzeug'] or '')}")
-    p.drawString(50, height - 200, f"Kennzeichen: {pdf_text(kontrola['kennzeichen'] or '')}")
-    p.drawString(50, height - 225, f"Fahrer: {pdf_text(kontrola['fahrer'] or '')}")
+    # Allgemeine Angaben
+    y = height - 110
+
+    p.setFillColorRGB(*dark_grey)
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(40, y, "Allgemeine Angaben")
+
+    y -= 25
+
+    p.setFillColorRGB(*light_grey)
+    p.rect(35, y - 110, width - 70, 120, fill=1, stroke=0)
+
+    datum = kontrola["datum"]
+    datum_text = datum.strftime("%d.%m.%Y") if datum else "-"
+
+    felder = [
+        ("Datum", datum_text),
+        ("Fahrzeug", kontrola["fahrzeug"] or "-"),
+        ("Kennzeichen", kontrola["kennzeichen"] or "-"),
+        ("Fahrer", kontrola["fahrer"] or "-"),
+    ]
+
+    for label, wert in felder:
+        p.setFillColorRGB(*dark_grey)
+        p.setFont("Helvetica-Bold", 10)
+        p.drawString(45, y, label + ":")
+
+        p.setFillColorRGB(0, 0, 0)
+        p.setFont("Helvetica", 10)
+        p.drawString(
+            165,
+            y,
+            pdf_text(str(wert))[:65],
+        )
+
+        y -= 28
+
+    # Kontrollstatus
+    y -= 30
+
+    p.setFillColorRGB(*dark_grey)
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(40, y, "Fahrzeugkontrolle")
+
+    y -= 28
+
+    p.setFillColorRGB(*light_grey)
+    p.rect(35, y - 52, width - 70, 65, fill=1, stroke=0)
 
     status = "Ja" if kontrola["ist_ok"] else "Nein"
 
-    p.drawString(50, height - 260, f"Fahrzeug in Ordnung: {status}")
+    p.setFillColorRGB(*dark_grey)
+    p.setFont("Helvetica-Bold", 10)
+    p.drawString(45, y, "Fahrzeug in Ordnung:")
 
-    maengel = pdf_text(kontrola["maengel"] or "Keine")
-    p.drawString(50, height - 285, f"Maengel: {maengel[:75]}")
+    if kontrola["ist_ok"]:
+        p.setFillColorRGB(0, 0.5, 0)
+    else:
+        p.setFillColorRGB(0.8, 0, 0)
 
     p.setFont("Helvetica-Bold", 11)
-    p.drawString(50, height - 340, "Unterschrift des Fahrers:")
+    p.drawString(205, y, status)
 
-    draw_signature_on_pdf(
-        p,
-        kontrola["unterschrift"],
+    y -= 30
+
+    p.setFillColorRGB(*dark_grey)
+    p.setFont("Helvetica-Bold", 10)
+    p.drawString(45, y, "Kontrollstatus:")
+
+    p.setFillColorRGB(0, 0, 0)
+    p.setFont("Helvetica", 10)
+
+    if kontrola["unterschrift"]:
+        p.drawString(205, y, "Unterschrieben")
+    else:
+        p.drawString(205, y, "Nicht unterschrieben")
+
+    # Maengel
+    y -= 70
+
+    p.setFillColorRGB(*dark_grey)
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(40, y, "Maengel / Bemerkungen")
+
+    y -= 25
+
+    p.setFillColorRGB(*light_grey)
+    p.rect(35, y - 80, width - 70, 90, fill=1, stroke=0)
+
+    maengel = pdf_text(kontrola["maengel"] or "Keine")
+
+    from reportlab.lib.utils import simpleSplit
+
+    zeilen = simpleSplit(
+        maengel,
+        "Helvetica",
+        10,
+        width - 110,
+    )
+
+    p.setFillColorRGB(0, 0, 0)
+    p.setFont("Helvetica", 10)
+
+    for zeile in zeilen[:5]:
+        p.drawString(45, y, zeile)
+        y -= 15
+
+    # Elektronische Unterschrift
+    p.setFillColorRGB(*dark_grey)
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(40, 225, "Elektronische Unterschrift")
+
+    if kontrola["unterschrift"]:
+        draw_signature_on_pdf(
+            p,
+            kontrola["unterschrift"],
+            x=45,
+            y=125,
+            width=220,
+            height=85,
+        )
+    else:
+        p.setFont("Helvetica", 10)
+        p.drawString(45, 170, "Noch keine Unterschrift vorhanden.")
+
+    p.setStrokeColorRGB(*dark_grey)
+    p.line(45, 120, 285, 120)
+
+    p.setFont("Helvetica", 9)
+    p.setFillColorRGB(*dark_grey)
+    p.drawString(
+        45,
+        105,
+        pdf_text(kontrola["fahrer"] or "Fahrer"),
+    )
+
+    # Fusszeile
+    p.setStrokeColorRGB(*medium_grey)
+    p.line(40, 65, width - 40, 65)
+
+    p.setFont("Helvetica", 9)
+    p.setFillColorRGB(*dark_grey)
+
+    p.drawString(
+        40,
         50,
-        height - 430,
-        width=180,
-        height=70
+        "PEJO Elektrotechnik GmbH",
+    )
+
+    p.drawRightString(
+        width - 40,
+        50,
+        f"Abfahrtskontrolle Nr. {kontrola_id}",
     )
 
     p.showPage()
@@ -676,6 +847,12 @@ def admin_abfahrtskontrolle_pdf(kontrola_id):
 
     buffer.seek(0)
 
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f"abfahrtskontrolle_{kontrola_id}.pdf",
+        mimetype="application/pdf",
+    )
     return send_file(
         buffer,
         as_attachment=True,
