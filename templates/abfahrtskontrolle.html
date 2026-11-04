@@ -1,6 +1,19 @@
 {% extends "base.html" %}
 {% block content %}
 
+<div style="max-width:1100px; margin:20px auto 0;">
+    <a href="{{ url_for('dashboard') }}"
+       style="display:inline-block;
+              padding:10px 18px;
+              background:#dc2626;
+              color:white;
+              text-decoration:none;
+              border-radius:10px;
+              font-weight:bold;">
+        ⬅ Zurück zum Dashboard
+    </a>
+</div>
+
 <style>
 .abfahrt {
     max-width: 1100px;
