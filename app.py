@@ -1183,6 +1183,238 @@ def list_reports():
 
     return render_template("list.html", reports=reports)
 
+@app.route("/bericht/loeschen/<int:bericht_id>", methods=["POST"])
+def bericht_loeschen(bericht_id):
+    if not is_logged_in():
+        return redirect(url_for("login"))
+
+    try:
+        validate_csrf(request.form.get("csrf_token", ""))
+    except Exception:
+        abort(400, description="Ungültiger CSRF-Token")
+
+    company_id = current_company_id()
+    user_id = current_user_id()
+
+    conn = None
+
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+
+        if is_admin():
+            cur.execute(
+                """
+                DELETE FROM reports
+                WHERE id = %s AND company_id = %s
+                """,
+                (bericht_id, company_id),
+            )
+        else:
+            cur.execute(
+                """
+                DELETE FROM reports
+                WHERE id = %s
+                  AND company_id = %s
+                  AND user_id = %s
+                """,
+                (bericht_id, company_id, user_id),
+            )
+
+        geloescht = cur.rowcount
+        conn.commit()
+
+        if geloescht:
+            flash("Bautagesbericht erfolgreich gelöscht.", "success")
+        else:
+            flash("Bautagesbericht nicht gefunden oder keine Berechtigung.", "warning")
+
+    except Exception:
+        if conn:
+            conn.rollback()
+
+        app.logger.exception("Fehler beim Löschen des Bautagesberichts")
+        flash("Fehler beim Löschen des Bautagesberichts.", "error")
+
+    finally:
+        if conn:
+            conn.close()
+
+    return redirect(url_for("list_reports"))
+
+@app.route("/bericht/bearbeiten/<int:bericht_id>", methods=["GET", "POST"])
+def bericht_bearbeiten(bericht_id):
+    if not is_logged_in():
+        return redirect(url_for("login"))
+
+    company_id = current_company_id()
+    user_id = current_user_id()
+
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    try:
+        if is_admin():
+            cur.execute(
+                """
+                SELECT *
+                FROM reports
+                WHERE id = %s AND company_id = %s
+                """,
+                (bericht_id, company_id),
+            )
+        else:
+            cur.execute(
+                """
+                SELECT *
+                FROM reports
+                WHERE id = %s AND company_id = %s AND user_id = %s
+                """,
+                (bericht_id, company_id, user_id),
+            )
+
+        report = cur.fetchone()
+
+        if not report:
+            flash("Bericht nicht gefunden oder keine Berechtigung.", "error")
+            return redirect(url_for("list_reports"))
+
+        if request.method == "POST":
+            try:
+                validate_csrf(request.form.get("csrf_token", ""))
+            except Exception:
+                abort(400, description="Ungültiger CSRF-Token")
+
+            datum = (request.form.get("datum") or "").strip()
+            baustelle = (request.form.get("baustelle") or "").strip()
+
+            if not datum or not baustelle:
+                flash("Datum und Baustelle sind erforderlich.", "error")
+                return redirect(
+                    url_for("bericht_bearbeiten", bericht_id=bericht_id)
+                )
+
+            arbeitszeit_von = request.form.get("arbeitszeit_von") or None
+            arbeitszeit_bis = request.form.get("arbeitszeit_bis") or None
+            pause_stunden = to_float(
+                request.form.get("pause_stunden"), 0.0
+            )
+
+            netto_stunden = calculate_netto_hours(
+                arbeitszeit_von,
+                arbeitszeit_bis,
+                pause_stunden,
+            )
+
+            neue_unterschrift = (
+                request.form.get("signature") or ""
+            ).strip()
+
+            signature = neue_unterschrift or report["signature"]
+
+            daten = {
+                "datum": datum,
+                "wetter": (request.form.get("wetter") or "").strip(),
+                "temperatur": (
+                    request.form.get("temperatur") or ""
+                ).strip(),
+                "signature": signature,
+                "arbeitszeit_von": arbeitszeit_von,
+                "arbeitszeit_bis": arbeitszeit_bis,
+                "pause_stunden": pause_stunden,
+                "netto_stunden": netto_stunden,
+                "baustelle": baustelle,
+                "team": request.form.get("team") or "",
+                "arbeit": request.form.get("arbeit") or "",
+                "material": request.form.get("material") or "",
+                "bemerkung": request.form.get("bemerkung") or "",
+                "bauleiter": request.form.get("bauleiter") or "",
+                "ersteller": request.form.get("ersteller") or "",
+            }
+
+            rollen = [
+                "polier",
+                "vorarbeiter",
+                "facharbeiter",
+                "elektriker",
+                "helfer",
+                "lkw_fahrer",
+            ]
+
+            for rolle in rollen:
+                daten[f"{rolle}_name"] = (
+                    request.form.get(f"{rolle}_name") or ""
+                )
+                daten[f"{rolle}_stunden"] = to_float(
+                    request.form.get(f"{rolle}_stunden"), 0.0
+                )
+
+            spalten = list(daten.keys())
+
+            set_sql = ", ".join(
+                f"{spalte} = %s" for spalte in spalten
+            )
+
+            if is_admin():
+                where_sql = "id = %s AND company_id = %s"
+                where_params = (bericht_id, company_id)
+            else:
+                where_sql = (
+                    "id = %s AND company_id = %s AND user_id = %s"
+                )
+                where_params = (
+                    bericht_id,
+                    company_id,
+                    user_id,
+                )
+
+            cur.execute(
+                f"""
+                UPDATE reports
+                SET {set_sql}
+                WHERE {where_sql}
+                """,
+                tuple(daten.values()) + where_params,
+            )
+
+            if cur.rowcount == 0:
+                conn.rollback()
+                flash("Bericht konnte nicht aktualisiert werden.", "error")
+                return redirect(url_for("list_reports"))
+
+            conn.commit()
+
+            flash(
+                "Bautagesbericht erfolgreich aktualisiert.",
+                "success",
+            )
+
+            return redirect(url_for("list_reports"))
+
+        return render_template(
+            "index.html",
+            report=report,
+            heute=date.today().isoformat(),
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception:
+        conn.rollback()
+        app.logger.exception(
+            "Fehler beim Bearbeiten des Bautagesberichts"
+        )
+        flash(
+            "Fehler beim Bearbeiten des Bautagesberichts.",
+            "error",
+        )
+        return redirect(url_for("list_reports"))
+
+    finally:
+        cur.close()
+        conn.close()
+
 
 @app.route("/detail/<int:report_id>")
 def detail(report_id):
