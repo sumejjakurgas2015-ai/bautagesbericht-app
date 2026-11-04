@@ -1362,7 +1362,7 @@ def bericht_bearbeiten(bericht_id):
                 f"{spalte} = %s" for spalte in spalten
             )
 
-           if is_admin():
+            if is_admin():
                 where_sql = (
                     "id = %s AND company_id = %s "
                     "AND (signature IS NULL OR signature = '')"
