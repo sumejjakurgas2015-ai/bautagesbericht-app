@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Alle Abfahrtskontrollen</title>
+
     <style>
         body {
             background: #0f172a;
@@ -39,14 +40,51 @@
         a {
             color: #93c5fd;
         }
+
+        .aktionen {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px;
+            border-radius: 5px;
+            text-decoration: none;
+            border: none;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .btn-pdf {
+            background: #4f7cff;
+            color: white;
+        }
+
+        .btn-edit {
+            background: #f59e0b;
+            color: #111827;
+        }
+
+        .btn-delete {
+            background: #dc2626;
+            color: white;
+        }
     </style>
 </head>
+
 <body>
 
     <h1>📋 Alle Abfahrtskontrollen</h1>
 
     <p>
-        <a href="{{ url_for('dashboard') }}">← Zurück zum Dashboard</a>
+        <a href="{{ url_for('dashboard') }}">
+            ← Zurück zum Dashboard
+        </a>
     </p>
 
     <p>Gefundene Kontrollen: {{ kontrole|length }}</p>
@@ -62,17 +100,24 @@
                     <th>i.O.</th>
                     <th>Mängel</th>
                     <th>Unterschrift</th>
-                    <th>PDF</th>
+                    <th>Aktionen</th>
                 </tr>
-                
             </thead>
+
             <tbody>
                 {% for kontrola in kontrole %}
+
                 <tr>
-                    <td>{{ kontrola['datum'].strftime('%d.%m.%Y') }}</td>
+                    <td>
+                        {{ kontrola['datum'].strftime('%d.%m.%Y') if kontrola['datum'] else '-' }}
+                    </td>
+
                     <td>{{ kontrola['fahrzeug'] or '' }}</td>
+
                     <td>{{ kontrola['kennzeichen'] or '' }}</td>
+
                     <td>{{ kontrola['fahrer'] or '' }}</td>
+
                     <td>
                         {% if kontrola['ist_ok'] %}
                             ✅
@@ -80,32 +125,77 @@
                             ❌
                         {% endif %}
                     </td>
+
                     <td>{{ kontrola['maengel'] or '' }}</td>
+
                     <td>
                         {% if kontrola['unterschrift'] %}
-    <img
-        src="{{ kontrola['unterschrift'] }}"
-        alt="Unterschrift"
-        style="max-width: 180px; max-height: 80px; background: white; border-radius: 5px; padding: 5px;"
-    >
-{% else %}
-    ✍️ Nicht unterschrieben
-{% endif %}
-</td>
+                            <img
+                                src="{{ kontrola['unterschrift'] }}"
+                                alt="Unterschrift"
+                                style="max-width:180px;
+                                       max-height:80px;
+                                       background:white;
+                                       border-radius:5px;
+                                       padding:5px;"
+                            >
+                        {% else %}
+                            ✍️ Nicht unterschrieben
+                        {% endif %}
+                    </td>
 
-<td>
-    <a href="{{ url_for('admin_abfahrtskontrolle_pdf', kontrola_id=kontrola['id']) }}"
-       style="color: white; background: #4f7cff; padding: 10px; border-radius: 5px; text-decoration: none;">
-        📄 PDF herunterladen
-    </a>
-</td>
+                    <td>
+                        <div class="aktionen">
 
-</tr>
-   
-                {% else %}
-                <tr>
-                    <td colspan="8">Keine Kontrollen vorhanden.</td>
+                            <!-- PDF HERUNTERLADEN -->
+                            <a
+                                href="{{ url_for('admin_abfahrtskontrolle_pdf', kontrola_id=kontrola['id']) }}"
+                                class="btn btn-pdf"
+                            >
+                                📄 PDF herunterladen
+                            </a>
+
+                            <!-- KONTROLLE BEARBEITEN -->
+                            <a
+                                href="{{ url_for('admin_abfahrtskontrolle_bearbeiten', kontrola_id=kontrola['id']) }}"
+                                class="btn btn-edit"
+                            >
+                                ✏️ Bearbeiten
+                            </a>
+
+                            <!-- KONTROLLE LÖSCHEN -->
+                            <form
+                                action="{{ url_for('admin_abfahrtskontrolle_loeschen', kontrola_id=kontrola['id']) }}"
+                                method="POST"
+                                style="margin:0;"
+                                onsubmit="return confirm('Abfahrtskontrolle wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.');"
+                            >
+                                <input
+                                    type="hidden"
+                                    name="csrf_token"
+                                    value="{{ csrf_token() }}"
+                                >
+
+                                <button
+                                    type="submit"
+                                    class="btn btn-delete"
+                                >
+                                    🗑️ Löschen
+                                </button>
+                            </form>
+
+                        </div>
+                    </td>
                 </tr>
+
+                {% else %}
+
+                <tr>
+                    <td colspan="8" style="text-align:center; padding:20px;">
+                        Keine Kontrollen vorhanden.
+                    </td>
+                </tr>
+
                 {% endfor %}
             </tbody>
         </table>
