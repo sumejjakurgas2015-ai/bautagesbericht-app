@@ -27,6 +27,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 from flask_wtf.csrf import CSRFProtect, generate_csrf, validate_csrf, CSRFError
+from werkzeug.exceptions import HTTPException
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -291,6 +292,60 @@ def current_company_id():
 
 def current_user_id():
     return int(session.get("user_id"))
+
+
+PERMISSION_MODULES = ("bautagesbericht", "entsorgung", "abfahrtskontrolle")
+
+
+def ensure_permissions_schema():
+    """Idempotent schema update. NULL = legacy user with full module access."""
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions TEXT[]")
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+_permissions_schema_ready = False
+
+
+@app.before_request
+def prepare_permissions_schema():
+    global _permissions_schema_ready
+    if not _permissions_schema_ready and request.endpoint not in ("static", "health", "radi_li", "test_static", "manifest_test"):
+        ensure_permissions_schema()
+        _permissions_schema_ready = True
+
+
+def allowed_modules():
+    if not is_logged_in():
+        return set()
+    if is_admin():
+        return set(PERMISSION_MODULES)
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT permissions FROM users WHERE id = %s AND company_id = %s", (current_user_id(), current_company_id()))
+            row = cur.fetchone()
+        if not row:
+            return set()
+        value = row["permissions"]
+        return set(PERMISSION_MODULES) if value is None else set(value) & set(PERMISSION_MODULES)
+    finally:
+        conn.close()
+
+
+def require_module(module):
+    if not is_logged_in():
+        return redirect(url_for("login"))
+    if module not in allowed_modules():
+        abort(403, description="Keine Berechtigung für dieses Modul")
+    return None
 
 
 def to_float(value, default=0.0):
@@ -570,7 +625,7 @@ def dashboard():
     if not is_logged_in():
         return redirect(url_for("login"))
 
-    return render_template("dashboard.html")
+    return render_template("dashboard.html", allowed_modules=allowed_modules())
 @app.route("/admin/abfahrtskontrollen")
 def admin_abfahrtskontrollen():
     if not is_logged_in():
@@ -1015,6 +1070,10 @@ def abfahrtskontrolle():
     if not is_logged_in():
         return redirect(url_for("login"))
 
+    denied = require_module("abfahrtskontrolle")
+    if denied is not None:
+        return denied
+
     company_id = current_company_id()
     user_id = current_user_id()
     godina, sedmica, _ = date.today().isocalendar()
@@ -1207,6 +1266,10 @@ def index():
     if not is_logged_in():
         return redirect(url_for("login"))
 
+    denied = require_module("bautagesbericht")
+    if denied is not None:
+        return denied
+
     company_id = current_company_id()
     user_id = current_user_id()
 
@@ -1350,6 +1413,10 @@ def list_reports():
     if not is_logged_in():
         return redirect(url_for("login"))
 
+    denied = require_module("bautagesbericht")
+    if denied is not None:
+        return denied
+
     company_id = current_company_id()
     user_id = current_user_id()
 
@@ -1364,6 +1431,10 @@ def list_reports():
 def bericht_loeschen(bericht_id):
     if not is_logged_in():
         return redirect(url_for("login"))
+
+    denied = require_module("bautagesbericht")
+    if denied is not None:
+        return denied
 
     try:
         validate_csrf(request.form.get("csrf_token", ""))
@@ -1423,6 +1494,10 @@ def bericht_loeschen(bericht_id):
 def bericht_bearbeiten(bericht_id):
     if not is_logged_in():
         return redirect(url_for("login"))
+
+    denied = require_module("bautagesbericht")
+    if denied is not None:
+        return denied
 
     company_id = current_company_id()
     user_id = current_user_id()
@@ -1609,6 +1684,10 @@ def detail(report_id):
     if not is_logged_in():
         return redirect(url_for("login"))
 
+    denied = require_module("bautagesbericht")
+    if denied is not None:
+        return denied
+
     company_id = current_company_id()
     user_id = current_user_id()
 
@@ -1651,6 +1730,9 @@ def users_list():
     if not is_logged_in():
         return redirect(url_for("login"))
 
+    if not is_admin():
+        abort(403)
+
     try:
         company_id = current_company_id()
 
@@ -1659,7 +1741,7 @@ def users_list():
 
         cur.execute(
             """
-            SELECT id, name, role, company_id, created_at
+            SELECT id, name, role, permissions, company_id, created_at
             FROM users
             WHERE company_id = %s
             ORDER BY id DESC
@@ -1681,16 +1763,21 @@ def users_add():
     if not is_logged_in():
         return redirect(url_for("login"))
 
+    if not is_admin():
+        abort(403)
+
     try:
         company_id = current_company_id()
 
         if request.method == "POST":
+            try:
+                validate_csrf(request.form.get("csrf_token", ""))
+            except Exception:
+                abort(400, description="Ungültiger CSRF-Token")
             name = (request.form.get("name") or "").strip()
             pin = (request.form.get("pin") or "").strip()
-            role = (request.form.get("role") or "worker").strip().lower()
-
-            if role not in ("worker", "admin"):
-                role = "worker"
+            role = "worker"
+            permissions = sorted(set(request.form.getlist("permissions")) & set(PERMISSION_MODULES))
 
             if not name or not pin:
                 flash("Bitte Name und PIN eingeben.", "error")
@@ -1703,14 +1790,16 @@ def users_add():
                 reset_sequences(cur)
                 cur.execute(
                     """
-                    INSERT INTO users (name, pin, role, company_id)
-                    VALUES (%s, %s, %s, %s)
-                    ON CONFLICT (company_id, name) DO UPDATE
-                    SET pin = EXCLUDED.pin,
-                        role = EXCLUDED.role
+                    INSERT INTO users (name, pin, role, company_id, permissions)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON CONFLICT (company_id, name) DO NOTHING
                     """,
-                    (name, pin, role, company_id),
+                    (name, pin, role, company_id, permissions),
                 )
+                if cur.rowcount == 0:
+                    conn.rollback()
+                    flash("Name bereits vorhanden. Bitte vorhandenen Mitarbeiter bearbeiten.", "warning")
+                    return redirect(url_for("users_list"))
                 conn.commit()
                 flash("Benutzer gespeichert.", "success")
             except Exception as e:
@@ -1728,10 +1817,45 @@ def users_add():
         return f"USERS ADD ERROR: {str(e)}", 500
 
 
+@app.route("/users/<int:user_id>/permissions", methods=["GET", "POST"])
+def users_permissions(user_id):
+    if not is_logged_in():
+        return redirect(url_for("login"))
+    if not is_admin():
+        abort(403)
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, name, role, permissions FROM users WHERE id = %s AND company_id = %s", (user_id, current_company_id()))
+            employee = cur.fetchone()
+            if not employee:
+                abort(404)
+            if employee["role"] == "admin":
+                abort(403)
+            if request.method == "POST":
+                try:
+                    validate_csrf(request.form.get("csrf_token", ""))
+                except Exception:
+                    abort(400, description="Ungültiger CSRF-Token")
+                permissions = sorted(set(request.form.getlist("permissions")) & set(PERMISSION_MODULES))
+                cur.execute("UPDATE users SET permissions = %s WHERE id = %s AND company_id = %s AND role <> 'admin'", (permissions, user_id, current_company_id()))
+                conn.commit()
+                flash("Berechtigungen gespeichert.", "success")
+                return redirect(url_for("users_list"))
+        effective = set(PERMISSION_MODULES) if employee["permissions"] is None else set(employee["permissions"])
+        return render_template("users_permissions.html", employee=employee, permissions=effective)
+    finally:
+        conn.close()
+
+
 @app.route("/report/pdf/<int:report_id>")
 def report_pdf(report_id):
     if not is_logged_in():
         return redirect(url_for("login"))
+
+    denied = require_module("bautagesbericht")
+    if denied is not None:
+        return denied
 
     company_id = current_company_id()
     user_id = current_user_id()
@@ -1968,6 +2092,10 @@ def entsorgungsdokumentation():
     if not is_logged_in():
         return redirect(url_for("login"))
 
+    denied = require_module("entsorgung")
+    if denied is not None:
+        return denied
+
     if request.method == "POST":
         company_id = current_company_id()
         user_id = current_user_id()
@@ -2168,6 +2296,10 @@ def entsorgungsdokumentation_bearbeiten(dokument_id):
     if not is_logged_in():
         return redirect(url_for("login"))
 
+    denied = require_module("entsorgung")
+    if denied is not None:
+        return denied
+
     company_id = current_company_id()
     if not company_id:
         abort(403)
@@ -2305,6 +2437,10 @@ def entsorgungsdokumentation_liste():
     if not is_logged_in():
         return redirect(url_for("login"))
 
+    denied = require_module("entsorgung")
+    if denied is not None:
+        return denied
+
     conn = None
 
     try:
@@ -2351,6 +2487,10 @@ def entsorgungsdokumentation_liste():
 def entsorgungsdokumentation_loeschen(dokument_id):
     if not is_logged_in():
         return redirect(url_for("login"))
+
+    denied = require_module("entsorgung")
+    if denied is not None:
+        return denied
     # CSRF-Schutz vor dem Löschen prüfen
     try:
         validate_csrf(request.form.get("csrf_token", ""))
@@ -2406,6 +2546,10 @@ def entsorgungsdokumentation_loeschen(dokument_id):
 def entsorgungsdokumentation_pdf(dokument_id):
     if not is_logged_in():
         return redirect(url_for("login"))
+
+    denied = require_module("entsorgung")
+    if denied is not None:
+        return denied
 
     conn = None
 
