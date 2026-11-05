@@ -2,14 +2,88 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Benutzer hinzufügen</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 20px;
+      color: #333;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: 30px auto;
+      background: white;
+      padding: 25px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      color: #ed1c24;
+    }
+
+    .text-input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+      margin-top: 6px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    .permissions {
+      background: #f8f8f8;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+
+    .permission {
+      display: block;
+      margin: 15px 0;
+      cursor: pointer;
+    }
+
+    .permission input {
+      margin-right: 10px;
+      transform: scale(1.2);
+    }
+
+    button {
+      background: #ed1c24;
+      color: white;
+      border: none;
+      padding: 13px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+      font-size: 16px;
+      margin-top: 20px;
+    }
+
+    button:hover {
+      background: #c9151c;
+    }
+
+    a {
+      color: #ed1c24;
+      text-decoration: none;
+    }
+  </style>
 </head>
+
 <body>
-  <h2>Neuen Benutzer hinzufügen</h2>
+
+<div class="container">
+
+  <h2>Neuen Mitarbeiter hinzufügen</h2>
 
   <p>
-    <a href="{{ url_for('users_list') }}">Zurück</a> |
-    <a href="{{ url_for('logout') }}">Logout</a>
+    <a href="{{ url_for('users_list') }}">⬅ Zurück</a>
   </p>
 
   {% with messages = get_flashed_messages(with_categories=true) %}
@@ -23,13 +97,74 @@
   {% endwith %}
 
   <form method="post">
-    <label>Name</label><br>
-    <input name="name" required><br><br>
 
-    <label>PIN</label><br>
-    <input name="pin" required><br><br>
+    <label for="name">Name</label>
+    <input
+      class="text-input"
+      type="text"
+      id="name"
+      name="name"
+      required
+    >
 
-    <button type="submit">Speichern</button>
+    <br><br>
+
+    <label for="pin">PIN</label>
+    <input
+      class="text-input"
+      type="password"
+      id="pin"
+      name="pin"
+      required
+    >
+
+    <input type="hidden" name="role" value="worker">
+
+    <div class="permissions">
+
+      <h3>Rollen & Berechtigungen</h3>
+
+      <p>Welche Module darf dieser Mitarbeiter benutzen?</p>
+
+      <label class="permission">
+        <input
+          type="checkbox"
+          name="permissions"
+          value="bautagesbericht"
+          checked
+        >
+        Bautagesbericht
+      </label>
+
+      <label class="permission">
+        <input
+          type="checkbox"
+          name="permissions"
+          value="entsorgung"
+          checked
+        >
+        Entsorgungsdokumentation
+      </label>
+
+      <label class="permission">
+        <input
+          type="checkbox"
+          name="permissions"
+          value="abfahrtskontrolle"
+          checked
+        >
+        Tägliche Abfahrtskontrolle
+      </label>
+
+    </div>
+
+    <button type="submit">
+      Mitarbeiter speichern
+    </button>
+
   </form>
+
+</div>
+
 </body>
 </html>
