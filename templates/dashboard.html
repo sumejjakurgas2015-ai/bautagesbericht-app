@@ -104,7 +104,7 @@
 
     <div class="module-grid">
 
-        {% if has_permission('bautagesbericht') %}
+        {% if 'bautagesbericht' in allowed_modules %} 
         <a href="{{ url_for('index') }}" class="module-card">
             <div class="module-icon">📝</div>
             <h2>Bautagesbericht</h2>
@@ -112,8 +112,7 @@
             <span class="module-button">Öffnen</span>
         </a>
         {% endif %}
-
-        {% if has_permission('abfahrtskontrolle') %}
+        {% if 'abfahrtskontrolle' in allowed_modules %}   
         <a href="{{ url_for('abfahrtskontrolle') }}" class="module-card">
             <div class="module-icon">🚛</div>
             <h2>Tägliche Abfahrtskontrolle</h2>
@@ -130,8 +129,7 @@
             <span class="module-button">Öffnen</span>
         </a>
         {% endif %}
-
-        {% if has_permission('entsorgung') %}
+        {% if 'entsorgung' in allowed_modules %}
         <a href="{{ url_for('entsorgungsdokumentation') }}" class="module-card">
             <div class="module-icon">♻️</div>
             <h2>Entsorgungsdokumentation</h2>
