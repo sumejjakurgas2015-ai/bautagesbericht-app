@@ -2069,12 +2069,29 @@ def report_pdf(report_id):
     p.drawString(40, y, "Taetigkeiten")
     y -= 18
 
+    # Tätigkeiten – Text mit Zeilenumbrüchen
+    from reportlab.lib.utils import simpleSplit
+
+    arbeit_text = str(report.get("arbeit") or "")
+    arbeit_lines = []
+
+    for paragraph in arbeit_text.replace("\r\n", "\n").split("\n"):
+        if paragraph.strip():
+            arbeit_lines.extend(
+                simpleSplit(pdf_text(paragraph), "Helvetica", 10, width - 100)
+            )
+        else:
+            arbeit_lines.append("")
+
+    arbeit_height = max(48, len(arbeit_lines) * 14 + 16)
+
     p.setFillColorRGB(*light_grey)
-    p.rect(35, y - 40, width - 70, 48, fill=1, stroke=0)
+    p.rect(35, y + 8 - arbeit_height, width - 70, arbeit_height, fill=1, stroke=0)
+
     p.setFillColorRGB(0, 0, 0)
-    p.setFont("Helvetica", 10)
-    p.drawString(45, y, pdf_text(report.get("arbeit")))
-    y -= 58
+    y = pdf_multiline(p, arbeit_text, 45, y, width - 100)
+
+    y -= 16
 
     p.setFillColorRGB(*dark_grey)
     p.setFont("Helvetica-Bold", 12)
