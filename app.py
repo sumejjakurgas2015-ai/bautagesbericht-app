@@ -2098,12 +2098,34 @@ def report_pdf(report_id):
     p.drawString(40, y, "Material")
     y -= 18
 
+    # Material – Text mit Zeilenumbrüchen
+    material_text = str(report.get("material") or "")
+    material_lines = []
+
+    for paragraph in material_text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        if paragraph.strip():
+            material_lines.extend(
+                simpleSplit(pdf_text(paragraph), "Helvetica", 10, width - 100)
+            )
+        else:
+            material_lines.append("")
+
+    material_height = max(32, len(material_lines) * 14 + 16)
+
     p.setFillColorRGB(*light_grey)
-    p.rect(35, y - 24, width - 70, 32, fill=1, stroke=0)
+    p.rect(
+        35,
+        y + 8 - material_height,
+        width - 70,
+        material_height,
+        fill=1,
+        stroke=0
+    )
+
     p.setFillColorRGB(0, 0, 0)
-    p.setFont("Helvetica", 10)
-    p.drawString(45, y, pdf_text(report.get("material")))
-    y -= 42
+    y = pdf_multiline(p, material_text, 45, y, width - 100)
+
+    y -= 16
 
     p.setFillColorRGB(*dark_grey)
     p.setFont("Helvetica-Bold", 12)
