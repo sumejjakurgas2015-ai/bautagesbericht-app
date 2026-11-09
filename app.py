@@ -2404,6 +2404,11 @@ def entsorgungsdokumentation_bearbeiten(dokument_id):
     if denied is not None:
         return denied
 
+    # Gespeicherte Dokumente dürfen nicht mehr bearbeitet werden.
+    # Gilt für Mitarbeiter und Administratoren.
+    flash("Dieses Dokument ist bereits gespeichert und kann nicht mehr bearbeitet werden.")
+    return redirect(url_for("entsorgungsdokumentation_liste"))
+
     company_id = current_company_id()
     if not company_id:
         abort(403)
