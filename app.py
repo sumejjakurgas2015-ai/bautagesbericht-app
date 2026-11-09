@@ -394,6 +394,48 @@ def pdf_text(value):
         text = text.replace(old, new)
 
     return text.encode("latin-1", "replace").decode("latin-1")
+    
+def pdf_multiline(p, text, x, y, max_width, line_height=14):
+    from reportlab.lib.utils import simpleSplit
+
+    text = str(text or "")
+
+    # Uklanjanje znakova koje Helvetica ne podrzava
+    replacements = {
+        "\u25a0": "-",
+        "\u25aa": "-",
+        "\u2022": "-",
+        "\u200b": "",
+        "\ufeff": "",
+        "\t": "    ",
+    }
+
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+
+    p.setFont("Helvetica", 10)
+
+    for paragraph in text.split("\n"):
+        if not paragraph.strip():
+            y -= line_height
+            continue
+
+        clean_text = pdf_text(paragraph)
+
+        lines = simpleSplit(
+            clean_text,
+            "Helvetica",
+            10,
+            max_width
+        )
+
+        for line in lines:
+            p.drawString(x, y, line)
+            y -= line_height
+
+    return y
 
 
 def draw_signature_on_pdf(p, signature_data, x, y, width=180, height=60):
