@@ -86,19 +86,7 @@
                             👁️ Ansehen
                         </a>
 
-                        <!-- DOKUMENT BEARBEITEN -->
-                        <a href="{{ url_for('entsorgungsdokumentation_bearbeiten', dokument_id=dokument.id) }}"
-                           style="display:inline-block;
-                                  background:#f59e0b;
-                                  color:#111;
-                                  padding:9px 14px;
-                                  border-radius:6px;
-                                  text-decoration:none;
-                                  font-weight:bold;
-                                  white-space:nowrap;
-                                  margin-left:6px;">
-                            ✏️ Bearbeiten
-                        </a>
+                       
 
                         <!-- DOKUMENT LÖSCHEN -->
                         <form action="{{ url_for('entsorgungsdokumentation_loeschen', dokument_id=dokument.id) }}"
