@@ -2132,11 +2132,34 @@ def report_pdf(report_id):
     p.drawString(40, y, "Bemerkung")
     y -= 18
 
+    # Bemerkung – Text mit Zeilenumbrüchen
+    bemerkung_text = str(report.get("bemerkung") or "")
+    bemerkung_lines = []
+
+    for paragraph in bemerkung_text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        if paragraph.strip():
+            bemerkung_lines.extend(
+                simpleSplit(pdf_text(paragraph), "Helvetica", 10, width - 100)
+            )
+        else:
+            bemerkung_lines.append("")
+
+    bemerkung_height = max(40, len(bemerkung_lines) * 14 + 16)
+
     p.setFillColorRGB(*light_grey)
-    p.rect(35, y - 32, width - 70, 40, fill=1, stroke=0)
+    p.rect(
+        35,
+        y + 8 - bemerkung_height,
+        width - 70,
+        bemerkung_height,
+        fill=1,
+        stroke=0
+    )
+
     p.setFillColorRGB(0, 0, 0)
-    p.setFont("Helvetica", 10)
-    p.drawString(45, y, pdf_text(report.get("bemerkung")))
+    y = pdf_multiline(p, bemerkung_text, 45, y, width - 100)
+
+    y -= 16 
 
     p.setFillColorRGB(*dark_grey)
     p.setFont("Helvetica-Bold", 10)
