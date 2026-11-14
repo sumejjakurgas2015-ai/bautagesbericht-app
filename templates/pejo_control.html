@@ -104,8 +104,26 @@
 
 <div class="card">
     <h2>📊 Übersicht</h2>
-    <p>Registrierte Firmen und Benutzerzahlen anzeigen.</p>
-    <span class="badge">In Vorbereitung</span>
+    <p>Aktuelle Firmenstatistik</p>
+
+    <div style="display:flex;gap:15px;flex-wrap:wrap;margin-top:20px;">
+
+        <div style="background:#101827;padding:20px;border-radius:10px;flex:1;min-width:150px;text-align:center;">
+            <h2>🏢 {{ stats.total_companies }}</h2>
+            <p>Registrierte Firmen</p>
+        </div>
+
+        <div style="background:#101827;padding:20px;border-radius:10px;flex:1;min-width:150px;text-align:center;">
+            <h2>🟢 {{ stats.active_companies }}</h2>
+            <p>Aktive Firmen</p>
+        </div>
+
+        <div style="background:#101827;padding:20px;border-radius:10px;flex:1;min-width:150px;text-align:center;">
+            <h2>🔴 {{ stats.inactive_companies }}</h2>
+            <p>Inaktive Firmen</p>
+        </div>
+
+    </div>
 </div>
 
 <div class="card">
