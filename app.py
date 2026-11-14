@@ -134,6 +134,18 @@ def init_db():
         """
     )
 
+        # Firmenfreigabe fuer PEJO BaustellenManager
+    # Bestehende Firmen bleiben aktiv.
+    cur.execute(
+        """
+        ALTER TABLE companies
+        ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE
+        """
+    )
+
+    # Neue Registrierungen werden spaeter auf FALSE gesetzt.
+    # Bestehende Firmen bleiben unveraendert.
+
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS users (
