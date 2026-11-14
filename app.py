@@ -790,6 +790,73 @@ def pejo_control():
         stats=stats
     )
 
+# PEJO Control Center – probni period za firme
+@app.route(
+    "/pejo-control/company/<int:company_id>/start-trial",
+    methods=["POST"]
+)
+def pejo_control_start_trial(company_id):
+    from flask_wtf.csrf import validate_csrf
+    from wtforms.validators import ValidationError
+
+    if not is_pejo_owner():
+        abort(403)
+
+    try:
+        validate_csrf(request.form.get("csrf_token", ""))
+    except ValidationError:
+        abort(400, description="Ungültiges Sicherheitstoken.")
+
+    # Zaštita vlasničke firme Demo10
+    if company_id == PEJO_OWNER_COMPANY_ID:
+        abort(403)
+
+    try:
+        days = int(request.form.get("days", ""))
+    except (TypeError, ValueError):
+        abort(400, description="Ungültige Anzahl von Tagen.")
+
+    if not 1 <= days <= 365:
+        abort(400, description="Testphase muss zwischen 1 und 365 Tagen liegen.")
+
+    conn = get_db()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE companies
+                SET subscription_status = 'trial',
+                    trial_start = NOW(),
+                    trial_end = NOW() + (%s * INTERVAL '1 day')
+                WHERE id = %s
+                RETURNING name
+                """,
+                (days, company_id),
+            )
+
+            company = cur.fetchone()
+
+            if company is None:
+                conn.rollback()
+                abort(404)
+
+        conn.commit()
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        conn.close()
+
+    flash(
+        f"Testphase für {company['name']} wurde für {days} Tage gestartet.",
+        "success"
+    )
+
+    return redirect(url_for("pejo_control_subscriptions"))
+
 # PEJO Control Center – pregled pretplata i probnih perioda
 @app.route("/pejo-control/subscriptions")
 def pejo_control_subscriptions():
