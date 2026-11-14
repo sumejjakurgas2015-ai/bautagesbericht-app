@@ -790,6 +790,37 @@ def pejo_control():
         stats=stats
     )
 
+# PEJO Control Center – pregled pretplata i probnih perioda
+@app.route("/pejo-control/subscriptions")
+def pejo_control_subscriptions():
+    if not is_pejo_owner():
+        abort(403)
+
+    conn = get_db()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    id,
+                    name,
+                    subscription_status,
+                    trial_start,
+                    trial_end
+                FROM companies
+                ORDER BY created_at DESC, id DESC
+            """)
+
+            companies = cur.fetchall()
+
+    finally:
+        conn.close()
+
+    return render_template(
+        "pejo_control_subscriptions.html",
+        companies=companies
+    )
+
 # PEJO Control Center – pregled registrovanih firmi
 @app.route("/pejo-control/companies")
 def pejo_control_companies():
