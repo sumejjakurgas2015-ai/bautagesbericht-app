@@ -322,6 +322,51 @@ def ensure_permissions_schema():
     finally:
         conn.close()
 
+@app.before_request
+def check_company_activation():
+    # Öffentliche Seiten bleiben erreichbar
+    if request.endpoint in (
+        "static",
+        "login",
+        "register",
+        "logout",
+        "health",
+        "radi_li",
+        "test_static",
+        "manifest_test",
+    ):
+        return None
+
+    # Nur bereits angemeldete Benutzer prüfen
+    if not is_logged_in():
+        return None
+
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT 1
+                FROM companies
+                WHERE id = %s
+                  AND is_active = TRUE
+                """,
+                (current_company_id(),),
+            )
+            company = cur.fetchone()
+    finally:
+        conn.close()
+
+    if not company:
+        session.clear()
+        flash(
+            "Ihre Firma ist nicht freigeschaltet. Bitte kontaktieren Sie PEJO.",
+            "error",
+        )
+        return redirect(url_for("login"))
+
+    return None
+
 
 _permissions_schema_ready = False
 
