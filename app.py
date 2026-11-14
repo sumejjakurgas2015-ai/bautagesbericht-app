@@ -308,6 +308,54 @@ def is_super_admin():
     except (TypeError, ValueError):
         return False
 
+@app.route("/super-admin/company/<int:company_id>/toggle", methods=["POST"])
+def super_admin_toggle_company():
+    if not is_super_admin():
+        abort(403)
+
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            # Vlasnik ne smije deaktivirati vlastitu firmu
+            cur.execute(
+                "SELECT company_id FROM users WHERE id = %s",
+                (int(SUPER_ADMIN_USER_ID),),
+            )
+            owner = cur.fetchone()
+
+            if not owner:
+                abort(403)
+
+            if int(owner["company_id"]) == company_id:
+                flash("Die eigene Firma kann nicht deaktiviert werden.", "error")
+                return redirect(url_for("super_admin"))
+
+            cur.execute(
+                """
+                UPDATE companies
+                SET is_active = NOT is_active
+                WHERE id = %s
+                RETURNING is_active
+                """,
+                (company_id,),
+            )
+            updated = cur.fetchone()
+
+        conn.commit()
+
+        if updated:
+            flash("Firmenstatus erfolgreich geändert.", "success")
+        else:
+            flash("Firma nicht gefunden.", "error")
+
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+    return redirect(url_for("super_admin"))
+
 @app.route("/super-admin")
 def super_admin():
     if not is_super_admin():
