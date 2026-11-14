@@ -299,6 +299,10 @@ def is_logged_in():
 def is_admin():
     return session.get("role") == "admin"
 
+# PEJO Control Center – odvojena vlasnička prijava
+def is_pejo_owner():
+    return session.get("pejo_owner_authenticated") is True
+
 def is_super_admin():
     if not is_logged_in() or not SUPER_ADMIN_USER_ID:
         return False
