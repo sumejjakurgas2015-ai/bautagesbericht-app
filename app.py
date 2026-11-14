@@ -780,11 +780,31 @@ def register():
 # PEJO Control Center – posebna vlasnička prijava
 @app.route("/pejo-control/login", methods=["GET", "POST"])
 def pejo_control_login():
+    from werkzeug.security import check_password_hash
+    from flask_wtf.csrf import validate_csrf
+    from wtforms.validators import ValidationError
+
     if request.method == "POST":
-        abort(403)
+        try:
+            validate_csrf(request.form.get("csrf_token", ""))
+        except ValidationError:
+            abort(400, description="Ungültiges Sicherheitstoken.")
+
+        password = request.form.get("password") or ""
+
+        if (
+            PEJO_OWNER_PASSWORD_HASH
+            and check_password_hash(PEJO_OWNER_PASSWORD_HASH, password)
+        ):
+            session.clear()
+            session["pejo_owner_authenticated"] = True
+            session.permanent = True
+
+            return redirect(url_for("pejo_control_login"))
+
+        flash("Falsches Passwort.", "error")
 
     return render_template("pejo_control_login.html")
-
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
