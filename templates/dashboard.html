@@ -137,6 +137,14 @@
             <span class="module-button">Öffnen</span>
         </a>
         {% endif %}
+                {% if session.get('user_id')|int == 87 and session.get('company_id')|int == 17 %}
+        <a href="{{ url_for('super_admin') }}" class="module-card">
+            <div class="module-icon">👑</div>
+            <h2>PEJO Super Admin</h2>
+            <p>Firmenverwaltung und Freigaben</p>
+            <span class="module-button">Öffnen</span>
+        </a>
+        {% endif %}
 
     </div>
 
