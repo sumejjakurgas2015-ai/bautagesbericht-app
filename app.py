@@ -814,6 +814,30 @@ def pejo_control():
 
     return render_template("pejo_control.html")
 
+# PEJO Control Center – pregled registrovanih firmi
+@app.route("/pejo-control/companies")
+def pejo_control_companies():
+    if not is_pejo_owner():
+        abort(403)
+
+    conn = get_db()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, name, is_active, created_at
+                FROM companies
+                ORDER BY created_at DESC, id DESC
+            """)
+            companies = cur.fetchall()
+    finally:
+        conn.close()
+
+    return render_template(
+        "pejo_control_companies.html",
+        companies=companies
+    )
+
 # PEJO Control Center – sigurna odjava
 @app.route("/pejo-control/logout", methods=["POST"])
 def pejo_control_logout():
