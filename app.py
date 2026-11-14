@@ -46,6 +46,10 @@ SUPER_ADMIN_USER_ID = os.environ.get("SUPER_ADMIN_USER_ID", "").strip()
 PEJO_OWNER_PASSWORD_HASH = os.environ.get(
     "PEJO_OWNER_PASSWORD_HASH", ""
 ).strip()
+# PEJO Control Center – zaštita vlasničke firme
+PEJO_OWNER_COMPANY_ID = int(
+    os.environ.get("PEJO_OWNER_COMPANY_ID", "17")
+)
 
 # CSRF-Schutz für Löschformulare
 # Bestehende Formulare bleiben vorerst unverändert.
