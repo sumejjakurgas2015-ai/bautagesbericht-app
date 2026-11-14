@@ -814,6 +814,23 @@ def pejo_control():
 
     return render_template("pejo_control.html")
 
+# PEJO Control Center – sigurna odjava
+@app.route("/pejo-control/logout", methods=["POST"])
+def pejo_control_logout():
+    from flask_wtf.csrf import validate_csrf
+    from wtforms.validators import ValidationError
+
+    if not is_pejo_owner():
+        abort(403)
+
+    try:
+        validate_csrf(request.form.get("csrf_token", ""))
+    except ValidationError:
+        abort(400, description="Ungültiges Sicherheitstoken.")
+
+    session.clear()
+    return redirect(url_for("pejo_control_login"))
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
