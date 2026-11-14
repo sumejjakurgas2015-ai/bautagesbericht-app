@@ -55,6 +55,23 @@
 <header>
     <h1>👑 PEJO Control Center</h1>
     <p>Inhaber-Verwaltung</p>
+
+    <form method="POST" action="{{ url_for('pejo_control_logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <button type="submit" style="
+            background: #d4af37;
+            color: #101827;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 12px;
+        ">
+            🔒 Abmelden
+        </button>
+    </form>
 </header>
 
 <main>
