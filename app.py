@@ -742,13 +742,37 @@ def pejo_control_login():
 
     return render_template("pejo_control_login.html")
 
-# PEJO Control Center – vlasnički panel
+# PEJO Control Center – vlasnički panel i statistika
 @app.route("/pejo-control")
 def pejo_control():
     if not is_pejo_owner():
         return redirect(url_for("pejo_control_login"))
 
-    return render_template("pejo_control.html")
+    conn = get_db()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    COUNT(*) AS total_companies,
+                    COUNT(*) FILTER (
+                        WHERE is_active = TRUE
+                    ) AS active_companies,
+                    COUNT(*) FILTER (
+                        WHERE is_active = FALSE
+                    ) AS inactive_companies
+                FROM companies
+            """)
+
+            stats = cur.fetchone()
+
+    finally:
+        conn.close()
+
+    return render_template(
+        "pejo_control.html",
+        stats=stats
+    )
 
 # PEJO Control Center – pregled registrovanih firmi
 @app.route("/pejo-control/companies")
