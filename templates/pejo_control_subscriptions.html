@@ -145,7 +145,11 @@
                            border:none;padding:9px;
                            border-radius:6px;font-weight:bold;
                            cursor:pointer;">
-                ➕ Testphase verlängern
+                          {% if company.trial_end and company.trial_end < now %}
+                    🔄 Testphase erneuern
+                {% else %}
+                    ➕ Testphase verlängern
+                {% endif %}
             </button>
 
         </form>
