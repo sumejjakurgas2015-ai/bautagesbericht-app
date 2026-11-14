@@ -951,9 +951,12 @@ def pejo_control_subscriptions():
     finally:
         conn.close()
 
+    from datetime import datetime
+
     return render_template(
         "pejo_control_subscriptions.html",
-        companies=companies
+        companies=companies,
+        now=datetime.now()
     )
 
 # PEJO Control Center – pregled registrovanih firmi
