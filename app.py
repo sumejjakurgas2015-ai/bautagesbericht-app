@@ -308,6 +308,30 @@ def is_super_admin():
     except (TypeError, ValueError):
         return False
 
+@app.route("/super-admin")
+def super_admin():
+    if not is_super_admin():
+        abort(403)
+
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, name, is_active, created_at
+                FROM companies
+                ORDER BY created_at DESC, id DESC
+                """
+            )
+            companies = cur.fetchall()
+    finally:
+        conn.close()
+
+    return render_template(
+        "super_admin.html",
+        companies=companies
+    )
+
 
 def current_company_id():
     return int(session.get("company_id", DEFAULT_COMPANY_ID))
