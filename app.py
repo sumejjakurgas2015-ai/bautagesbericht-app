@@ -144,7 +144,7 @@ def init_db():
         """
     )
 
-        # Firmenfreigabe fuer PEJO BaustellenManager
+    # Firmenfreigabe fuer PEJO BaustellenManager
     # Bestehende Firmen bleiben aktiv.
     cur.execute(
         """
@@ -152,6 +152,22 @@ def init_db():
         ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE
         """
     )
+
+    # PEJO Control Center – Abonnements und Testphasen
+    cur.execute("""
+    ALTER TABLE companies
+    ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'none'
+    """)
+
+    cur.execute("""
+    ALTER TABLE companies
+    ADD COLUMN IF NOT EXISTS trial_start TIMESTAMP
+    """)
+
+    cur.execute("""
+    ALTER TABLE companies
+    ADD COLUMN IF NOT EXISTS trial_end TIMESTAMP
+    """)
 
     # Neue Registrierungen werden spaeter auf FALSE gesetzt.
     # Bestehende Firmen bleiben unveraendert.
