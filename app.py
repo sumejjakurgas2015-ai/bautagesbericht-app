@@ -655,6 +655,7 @@ def login():
                 WHERE LOWER(c.name) = LOWER(%s)
                   AND LOWER(u.name) = LOWER(%s)
                   AND u.pin = %s
+                  AND c.is_active = TRUE
                 LIMIT 1
                 """,
                 (company, name, pin),
