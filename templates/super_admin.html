@@ -85,6 +85,7 @@
                         <th>Firma</th>
                         <th>Status</th>
                         <th>Registriert am</th>
+                        <th>Aktion</th>
                     </tr>
                 </thead>
 
@@ -105,10 +106,35 @@
                         <td>
                             {{ company.created_at.strftime('%d.%m.%Y') if company.created_at else '-' }}
                         </td>
+
+                        <td>
+    {% if company.id == session.get("company_id") %}
+        <strong>👑 Eigene Firma</strong>
+    {% else %}
+        <form
+            method="POST"
+            action="{{ url_for('super_admin_toggle_company', company_id=company.id) }}"
+        >
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            {% if company.is_active %}
+                <button type="submit"
+                        onclick="return confirm('Diese Firma wirklich deaktivieren?')">
+                    🔴 Deaktivieren
+                </button>
+            {% else %}
+                <button type="submit"
+                        onclick="return confirm('Diese Firma wirklich aktivieren?')">
+                    🟢 Aktivieren
+                </button>
+            {% endif %}
+        </form>
+    {% endif %}
+</td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="4">Keine Firmen vorhanden.</td>
+                        <td colspan="5">Keine Firmen vorhanden.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
