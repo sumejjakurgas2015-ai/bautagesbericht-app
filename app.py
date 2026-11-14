@@ -806,6 +806,14 @@ def pejo_control_login():
 
     return render_template("pejo_control_login.html")
 
+# PEJO Control Center – vlasnički panel
+@app.route("/pejo-control")
+def pejo_control():
+    if not is_pejo_owner():
+        return redirect(url_for("pejo_control_login"))
+
+    return render_template("pejo_control.html")
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
