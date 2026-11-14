@@ -588,10 +588,11 @@ def register():
                 flash("Diese Firma existiert bereits. Bitte loggen Sie sich ein.", "error")
                 return render_template("register.html")
 
+            # Neue Firmen warten auf Freigabe durch PEJO
             cur.execute(
                 """
-                INSERT INTO companies (name)
-                VALUES (%s)
+                INSERT INTO companies (name, is_active)
+                VALUES (%s, FALSE)
                 RETURNING id
                 """,
                 (company,),
