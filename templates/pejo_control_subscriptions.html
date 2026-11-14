@@ -110,36 +110,68 @@
                     <td>
                         {{ company.trial_end.strftime('%d.%m.%Y') if company.trial_end else '—' }}
                     </td>
+                    <td>
+    {% if company.id == 17 %}
 
-                   <td>
-                      {% if company.id == 17 %}
-                         🔒 Geschützt
-                      {% else %}
-                          <form method="POST"
-                                action="{{ url_for('pejo_control_start_trial', company_id=company.id) }}">
+        🔒 Geschützt
 
-                               <input type="hidden"
-                                      name="csrf_token"
-                                      value="{{ csrf_token() }}">
+    {% elif company.subscription_status == 'trial' %}
 
-                               <input type="number"
-                                      name="days"
-                                      min="1"
-                                      max="365"
-                                      value="14"
-                                      required
-                                      style="width:65px;padding:8px;border-radius:6px;">
+        <form method="POST"
+              action="{{ url_for('pejo_control_extend_trial', company_id=company.id) }}">
 
-                              <button type="submit"
-                                      style="background:#d4af37;color:#101827;
-                                      border:none;padding:9px;
-                                      border-radius:6px;font-weight:bold;
-                                      cursor:pointer;">
+            <input type="hidden"
+                   name="csrf_token"
+                   value="{{ csrf_token() }}">
+
+            <input type="number"
+                   name="days"
+                   min="1"
+                   max="365"
+                   value="14"
+                   required
+                   style="width:65px;padding:8px;border-radius:6px;">
+
+            <button type="submit"
+                    style="background:#d4af37;color:#101827;
+                           border:none;padding:9px;
+                           border-radius:6px;font-weight:bold;
+                           cursor:pointer;">
+                ➕ Testphase verlängern
+            </button>
+
+        </form>
+
+    {% else %}
+
+        <form method="POST"
+              action="{{ url_for('pejo_control_start_trial', company_id=company.id) }}">
+
+            <input type="hidden"
+                   name="csrf_token"
+                   value="{{ csrf_token() }}">
+
+            <input type="number"
+                   name="days"
+                   min="1"
+                   max="365"
+                   value="14"
+                   required
+                   style="width:65px;padding:8px;border-radius:6px;">
+
+            <button type="submit"
+                    style="background:#d4af37;color:#101827;
+                           border:none;padding:9px;
+                           border-radius:6px;font-weight:bold;
+                           cursor:pointer;">
                 🎁 Testphase starten
             </button>
+
         </form>
+
     {% endif %}
 </td>
+              
                 </tr>
                 {% else %}
                 <tr>
