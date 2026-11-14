@@ -311,97 +311,27 @@ def is_admin():
 def is_pejo_owner():
     return session.get("pejo_owner_authenticated") is True
 
-def is_super_admin():
-    if not is_logged_in() or not SUPER_ADMIN_USER_ID:
-        return False
-
-    try:
-        return int(session.get("user_id")) == int(SUPER_ADMIN_USER_ID)
-    except (TypeError, ValueError):
-        return False
-
-@app.route("/super-admin/company/<int:company_id>/toggle", methods=["POST"])
-def super_admin_toggle_company(company_id):
-    # Stari način upravljanja firmama je isključen.
-    # Koristi se isključivo PEJO Control Center.
-    abort(403)
-
-    # CSRF-Schutz gegen unbefugte Anfragen
-    from flask_wtf.csrf import validate_csrf
-    from wtforms.validators import ValidationError
-
-    try:
-        validate_csrf(request.form.get("csrf_token", ""))
-    except ValidationError:
-        abort(400, description="Ungültiges Sicherheitstoken.")
-
-    conn = get_db()
-    try:
-        with conn.cursor() as cur:
-            # Vlasnik ne smije deaktivirati vlastitu firmu
-            cur.execute(
-                "SELECT company_id FROM users WHERE id = %s",
-                (int(SUPER_ADMIN_USER_ID),),
-            )
-            owner = cur.fetchone()
-
-            if not owner:
-                abort(403)
-
-            if int(owner["company_id"]) == company_id:
-                flash("Die eigene Firma kann nicht deaktiviert werden.", "error")
-                return redirect(url_for("super_admin"))
-
-            cur.execute(
-                """
-                UPDATE companies
-                SET is_active = NOT is_active
-                WHERE id = %s
-                RETURNING is_active
-                """,
-                (company_id,),
-            )
-            updated = cur.fetchone()
-
-        conn.commit()
-
-        if updated:
-            flash("Firmenstatus erfolgreich geändert.", "success")
-        else:
-            flash("Firma nicht gefunden.", "error")
-
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
-
-    return redirect(url_for("super_admin"))
+# ==================================================
+# LEGACY SUPER ADMIN – DEAKTIVIERT
+# Firmenverwaltung nur über PEJO Control Center
+# ==================================================
 
 @app.route("/super-admin")
 def super_admin():
-    # Stari Super Admin panel je isključen.
-    # Koristi se novi PEJO Control Center.
     abort(403)
 
-    conn = get_db()
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id, name, is_active, created_at
-                FROM companies
-                ORDER BY created_at DESC, id DESC
-                """
-            )
-            companies = cur.fetchall()
-    finally:
-        conn.close()
 
-    return render_template(
-        "super_admin.html",
-        companies=companies
-    )
+@app.route("/super-admin/company/<int:company_id>/toggle", methods=["POST"])
+def super_admin_toggle_company(company_id):
+    abort(403)
+
+
+def current_company_id():
+    return int(session.get("company_id", DEFAULT_COMPANY_ID))
+
+
+def current_user_id():
+    return int(session.get("user_id"))
 
 
 def current_company_id():
