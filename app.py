@@ -313,6 +313,15 @@ def super_admin_toggle_company(company_id):
     if not is_super_admin():
         abort(403)
 
+    # CSRF-Schutz gegen unbefugte Anfragen
+    from flask_wtf.csrf import validate_csrf
+    from wtforms.validators import ValidationError
+
+    try:
+        validate_csrf(request.form.get("csrf_token", ""))
+    except ValidationError:
+        abort(400, description="Ungültiges Sicherheitstoken.")
+
     conn = get_db()
     try:
         with conn.cursor() as cur:
