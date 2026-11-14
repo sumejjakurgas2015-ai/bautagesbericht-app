@@ -777,6 +777,14 @@ def register():
 
     return render_template("register.html")
 
+# PEJO Control Center – posebna vlasnička prijava
+@app.route("/pejo-control/login", methods=["GET", "POST"])
+def pejo_control_login():
+    if request.method == "POST":
+        abort(403)
+
+    return render_template("pejo_control_login.html")
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
