@@ -857,6 +857,74 @@ def pejo_control_start_trial(company_id):
 
     return redirect(url_for("pejo_control_subscriptions"))
 
+# PEJO Control Center – Testphase verlängern
+@app.route(
+    "/pejo-control/company/<int:company_id>/extend-trial",
+    methods=["POST"]
+)
+def pejo_control_extend_trial(company_id):
+    from flask_wtf.csrf import validate_csrf
+    from wtforms.validators import ValidationError
+
+    if not is_pejo_owner():
+        abort(403)
+
+    try:
+        validate_csrf(request.form.get("csrf_token", ""))
+    except ValidationError:
+        abort(400, description="Ungültiges Sicherheitstoken.")
+
+    # Demo10 bleibt geschützt
+    if company_id == PEJO_OWNER_COMPANY_ID:
+        abort(403)
+
+    try:
+        days = int(request.form.get("days", ""))
+    except (TypeError, ValueError):
+        abort(400, description="Ungültige Anzahl von Tagen.")
+
+    if not 1 <= days <= 365:
+        abort(400, description="Verlängerung muss zwischen 1 und 365 Tagen liegen.")
+
+    conn = get_db()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE companies
+                SET trial_end = GREATEST(trial_end, NOW())
+                                + (%s * INTERVAL '1 day')
+                WHERE id = %s
+                  AND subscription_status = 'trial'
+                  AND trial_end IS NOT NULL
+                RETURNING name
+                """,
+                (days, company_id),
+            )
+
+            company = cur.fetchone()
+
+            if company is None:
+                conn.rollback()
+                abort(400, description="Keine Testphase zum Verlängern vorhanden.")
+
+        conn.commit()
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        conn.close()
+
+    flash(
+        f"Testphase für {company['name']} wurde um {days} Tage verlängert.",
+        "success"
+    )
+
+    return redirect(url_for("pejo_control_subscriptions"))
+
 # PEJO Control Center – pregled pretplata i probnih perioda
 @app.route("/pejo-control/subscriptions")
 def pejo_control_subscriptions():
