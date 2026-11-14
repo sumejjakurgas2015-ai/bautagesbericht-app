@@ -379,8 +379,9 @@ def super_admin_toggle_company(company_id):
 
 @app.route("/super-admin")
 def super_admin():
-    if not is_super_admin():
-        abort(403)
+    # Stari Super Admin panel je isključen.
+    # Koristi se novi PEJO Control Center.
+    abort(403)
 
     conn = get_db()
     try:
