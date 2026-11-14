@@ -82,6 +82,7 @@
                     <th>Firma</th>
                     <th>Registriert am</th>
                     <th>Status</th>
+                    <th>Aktion</th>
                 </tr>
             </thead>
 
@@ -106,6 +107,37 @@
                             <span class="inactive">🔴 Inaktiv</span>
                         {% endif %}
                     </td>
+                    <td>
+    {% if company.id == 17 %}
+        <span style="color: #d4af37;">
+            🔒 Geschützt
+        </span>
+    {% else %}
+        <form
+            method="POST"
+            action="{{ url_for('pejo_control_company_toggle', company_id=company.id) }}"
+            onsubmit="return confirm('Möchten Sie den Status dieser Firma wirklich ändern?');"
+        >
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ csrf_token() }}"
+            >
+
+            {% if company.is_active %}
+                <button type="submit"
+                        style="background:#b91c1c;color:white;padding:8px 12px;border:0;border-radius:6px;cursor:pointer;">
+                    🔴 Deaktivieren
+                </button>
+            {% else %}
+                <button type="submit"
+                        style="background:#15803d;color:white;padding:8px 12px;border:0;border-radius:6px;cursor:pointer;">
+                    🟢 Aktivieren
+                </button>
+            {% endif %}
+        </form>
+    {% endif %}
+</td>
                 </tr>
                 {% else %}
                 <tr>
