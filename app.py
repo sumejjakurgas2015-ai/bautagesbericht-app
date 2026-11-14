@@ -40,6 +40,8 @@ app = Flask(
 
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
 DEFAULT_COMPANY_ID = int(os.environ.get("COMPANY_ID", "1"))
+# PEJO Super Admin – vlasnik aplikacije
+SUPER_ADMIN_USER_ID = os.environ.get("SUPER_ADMIN_USER_ID", "").strip()
 
 # CSRF-Schutz für Löschformulare
 # Bestehende Formulare bleiben vorerst unverändert.
@@ -296,6 +298,15 @@ def is_logged_in():
 
 def is_admin():
     return session.get("role") == "admin"
+
+def is_super_admin():
+    if not is_logged_in() or not SUPER_ADMIN_USER_ID:
+        return False
+
+    try:
+        return int(session.get("user_id")) == int(SUPER_ADMIN_USER_ID)
+    except (TypeError, ValueError):
+        return False
 
 
 def current_company_id():
