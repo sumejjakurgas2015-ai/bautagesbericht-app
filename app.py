@@ -613,12 +613,13 @@ def register():
 
             conn.commit()
 
+            # Neue Firma muss zuerst von PEJO freigegeben werden
             session.clear()
-            session["user_id"] = user_id
-            session["name"] = name
-            session["company_id"] = company_id
-            session["role"] = user_row["role"]
-
+            flash(
+                "Registrierung erfolgreich! Ihre Firma wartet auf die Freigabe durch PEJO.",
+                "success"
+            )
+            return redirect(url_for("login")) 
             flash("Firma und Admin wurden erfolgreich erstellt.", "success")
             return redirect(url_for("index"))
 
