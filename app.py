@@ -322,8 +322,9 @@ def is_super_admin():
 
 @app.route("/super-admin/company/<int:company_id>/toggle", methods=["POST"])
 def super_admin_toggle_company(company_id):
-    if not is_super_admin():
-        abort(403)
+    # Stari način upravljanja firmama je isključen.
+    # Koristi se isključivo PEJO Control Center.
+    abort(403)
 
     # CSRF-Schutz gegen unbefugte Anfragen
     from flask_wtf.csrf import validate_csrf
