@@ -842,6 +842,55 @@ def pejo_control_companies():
         companies=companies
     )
 
+# PEJO Control Center – aktiviranje i deaktiviranje firmi
+@app.route("/pejo-control/company/<int:company_id>/toggle", methods=["POST"])
+def pejo_control_company_toggle(company_id):
+    from flask_wtf.csrf import validate_csrf
+    from wtforms.validators import ValidationError
+
+    if not is_pejo_owner():
+        abort(403)
+
+    try:
+        validate_csrf(request.form.get("csrf_token", ""))
+    except ValidationError:
+        abort(400, description="Ungültiges Sicherheitstoken.")
+
+    if company_id == PEJO_OWNER_COMPANY_ID:
+        flash("Die Inhaberfirma kann nicht deaktiviert werden.", "error")
+        return redirect(url_for("pejo_control_companies"))
+
+    conn = get_db()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                UPDATE companies
+                SET is_active = NOT is_active
+                WHERE id = %s
+                RETURNING name, is_active
+            """, (company_id,))
+
+            company = cur.fetchone()
+
+            if company is None:
+                conn.rollback()
+                abort(404)
+
+            conn.commit()
+
+        status = "aktiviert" if company["is_active"] else "deaktiviert"
+        flash(f"Firma {company['name']} wurde {status}.", "success")
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        conn.close()
+
+    return redirect(url_for("pejo_control_companies"))
+
 # PEJO Control Center – sigurna odjava
 @app.route("/pejo-control/logout", methods=["POST"])
 def pejo_control_logout():
