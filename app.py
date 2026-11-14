@@ -800,7 +800,7 @@ def pejo_control_login():
             session["pejo_owner_authenticated"] = True
             session.permanent = True
 
-            return redirect(url_for("pejo_control_login"))
+            return redirect(url_for("pejo_control"))
 
         flash("Falsches Passwort.", "error")
 
