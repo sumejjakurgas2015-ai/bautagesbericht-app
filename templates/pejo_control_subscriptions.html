@@ -93,14 +93,22 @@
 
                     <td>
                         {% if company.subscription_status == 'trial' %}
-                            🟢 Testphase
-                        {% elif company.subscription_status == 'active' %}
-                            💶 Aktives Abo
-                        {% elif company.subscription_status == 'expired' %}
-                            🔴 Abgelaufen
-                        {% else %}
-                            ⚪ Kein Abo
-                        {% endif %}
+
+                           {% if company.trial_end and company.trial_end < now %}
+                               🔴 Testphase abgelaufen
+                           {% else %}
+                               🟢 Testphase
+                           {% endif %}
+
+                         {% elif company.subscription_status == 'active' %}
+                             💶 Aktives Abo
+
+                         {% elif company.subscription_status == 'expired' %}
+                             🔴 Abgelaufen
+
+                         {% else %}
+                             ⚪ Kein Abo
+                         {% endif %}
                     </td>
 
                     <td>
