@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PEJO Control Center – Anmeldung</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #101827;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .login-box {
+            background: #1d2939;
+            padding: 35px;
+            border-radius: 14px;
+            width: 350px;
+            max-width: 85%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #d4af37;
+        }
+
+        input, button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 15px;
+            border-radius: 7px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background: #d4af37;
+            color: #101827;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .error {
+            color: #ff7777;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-box">
+        <h1>👑 PEJO</h1>
+        <h2>Control Center</h2>
+        <p>Inhaber-Anmeldung</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <p class="error">{{ message }}</p>
+            {% endfor %}
+        {% endwith %}
+
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <input
+                type="password"
+                name="password"
+                placeholder="Inhaber-Passwort"
+                autocomplete="current-password"
+                required
+            >
+
+            <button type="submit">Anmelden</button>
+        </form>
+    </div>
+</body>
+</html>
