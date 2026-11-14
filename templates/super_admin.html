@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PEJO Super Admin</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f3f6f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 30px auto;
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+
+        h1 {
+            color: #176b42;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 14px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background: #176b42;
+            color: white;
+        }
+
+        .active {
+            color: #16803c;
+            font-weight: bold;
+        }
+
+        .inactive {
+            color: #c62828;
+            font-weight: bold;
+        }
+
+        .back {
+            display: inline-block;
+            margin-top: 25px;
+            color: #176b42;
+            text-decoration: none;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+
+        <h1>👑 PEJO Super Admin</h1>
+        <p class="subtitle">Firmenverwaltung und Freigaben</p>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Firma</th>
+                        <th>Status</th>
+                        <th>Registriert am</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for company in companies %}
+                    <tr>
+                        <td>{{ company.id }}</td>
+                        <td>{{ company.name }}</td>
+
+                        <td>
+                            {% if company.is_active %}
+                                <span class="active">🟢 Aktiv</span>
+                            {% else %}
+                                <span class="inactive">🔴 Wartet auf Freigabe</span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {{ company.created_at.strftime('%d.%m.%Y') if company.created_at else '-' }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4">Keine Firmen vorhanden.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <a class="back" href="{{ url_for('dashboard') }}">
+            ← Zurück zum Dashboard
+        </a>
+
+    </div>
+</body>
+</html>
