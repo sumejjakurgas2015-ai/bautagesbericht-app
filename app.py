@@ -309,7 +309,7 @@ def is_super_admin():
         return False
 
 @app.route("/super-admin/company/<int:company_id>/toggle", methods=["POST"])
-def super_admin_toggle_company():
+def super_admin_toggle_company(company_id):
     if not is_super_admin():
         abort(403)
 
