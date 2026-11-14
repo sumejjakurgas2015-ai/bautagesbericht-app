@@ -42,6 +42,10 @@ app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
 DEFAULT_COMPANY_ID = int(os.environ.get("COMPANY_ID", "1"))
 # PEJO Super Admin – vlasnik aplikacije
 SUPER_ADMIN_USER_ID = os.environ.get("SUPER_ADMIN_USER_ID", "").strip()
+# PEJO Control Center – odvojena vlasnička autentifikacija
+PEJO_OWNER_PASSWORD_HASH = os.environ.get(
+    "PEJO_OWNER_PASSWORD_HASH", ""
+).strip()
 
 # CSRF-Schutz für Löschformulare
 # Bestehende Formulare bleiben vorerst unverändert.
