@@ -144,6 +144,14 @@ def init_db():
         """
     )
 
+    # PEJO Control Center – individueller App-Name pro Firma
+    cur.execute(
+        """
+        ALTER TABLE companies
+        ADD COLUMN IF NOT EXISTS app_name TEXT
+        """
+    )
+
     # Firmenfreigabe fuer PEJO BaustellenManager
     # Bestehende Firmen bleiben aktiv.
     cur.execute(
