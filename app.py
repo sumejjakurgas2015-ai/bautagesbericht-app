@@ -654,10 +654,37 @@ def health():
 
 @app.context_processor
 def inject_user():
+    app_name = "PEJO BaustellenManager"
+
+    company_id = session.get("company_id")
+
+    if session.get("user_id") and company_id:
+        conn = get_db()
+
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT app_name
+                    FROM companies
+                    WHERE id = %s
+                    """,
+                    (company_id,)
+                )
+
+                company = cur.fetchone()
+
+                if company and company["app_name"]:
+                    app_name = company["app_name"]
+
+        finally:
+            conn.close()
+
     return dict(
         user_id=session.get("user_id"),
         user_name=session.get("name"),
         user_role=session.get("role"),
+        app_name=app_name,
     )
 
 
