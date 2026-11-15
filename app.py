@@ -1178,6 +1178,138 @@ def pejo_control_company_app_name(company_id):
 
     return redirect(url_for("pejo_control_companies"))
 
+# PEJO Control Center – Firmenlogo hochladen
+@app.route("/pejo-control/company/<int:company_id>/logo", methods=["POST"])
+def pejo_control_company_logo(company_id):
+    from wtforms.validators import ValidationError
+
+    if not is_pejo_owner():
+        abort(403)
+
+    try:
+        validate_csrf(request.form.get("csrf_token", ""))
+    except ValidationError:
+        abort(400, description="Ungültiges Sicherheitstoken.")
+
+    if company_id == PEJO_OWNER_COMPANY_ID:
+        flash("Das PEJO-Logo ist geschützt.", "error")
+        return redirect(url_for("pejo_control_companies"))
+
+    logo = request.files.get("logo")
+
+    if not logo or not logo.filename:
+        flash("Bitte wählen Sie ein Logo aus.", "error")
+        return redirect(url_for("pejo_control_companies"))
+
+    filename = secure_filename(logo.filename)
+    extension = os.path.splitext(filename)[1].lower()
+
+    allowed_types = {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".webp": "image/webp",
+    }
+
+    if extension not in allowed_types:
+        flash("Nur PNG, JPG und WEBP sind erlaubt.", "error")
+        return redirect(url_for("pejo_control_companies"))
+
+    image_data = logo.read(1024 * 1024 + 1)
+
+    if not image_data or len(image_data) > 1024 * 1024:
+        flash("Das Logo darf maximal 1 MB groß sein.", "error")
+        return redirect(url_for("pejo_control_companies"))
+
+    # Dateisignatur prüfen
+    valid_image = False
+
+    if extension == ".png":
+        valid_image = image_data.startswith(b"\x89PNG\r\n\x1a\n")
+    elif extension in (".jpg", ".jpeg"):
+        valid_image = image_data.startswith(b"\xff\xd8\xff")
+    elif extension == ".webp":
+        valid_image = (
+            len(image_data) >= 12
+            and image_data[:4] == b"RIFF"
+            and image_data[8:12] == b"WEBP"
+        )
+
+    if not valid_image:
+        flash("Die ausgewählte Datei ist kein gültiges Bildformat.", "error")
+        return redirect(url_for("pejo_control_companies"))
+
+    # Bildinhalt mit Pillow vollständig prüfen
+    from PIL import Image, UnidentifiedImageError
+
+    try:
+        with Image.open(BytesIO(image_data)) as img:
+            if img.format not in ("PNG", "JPEG", "WEBP"):
+                raise ValueError("Ungültiges Bildformat")
+
+            expected_format = {
+                ".png": "PNG",
+                ".jpg": "JPEG",
+                ".jpeg": "JPEG",
+                ".webp": "WEBP",
+            }[extension]
+
+            if img.format != expected_format:
+                raise ValueError("Dateiendung stimmt nicht mit Bildformat überein")
+
+            img.verify()
+
+    except (UnidentifiedImageError, ValueError, OSError, Image.DecompressionBombError):
+        flash("Die Bilddatei ist beschädigt oder ungültig.", "error")
+        return redirect(url_for("pejo_control_companies"))
+
+    conn = get_db()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT name FROM companies WHERE id = %s",
+                (company_id,)
+            )
+            company = cur.fetchone()
+
+            if company is None:
+                abort(404)
+
+            cur.execute(
+                """
+                INSERT INTO company_logos
+                    (company_id, image_data, mime_type)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (company_id)
+                DO UPDATE SET
+                    image_data = EXCLUDED.image_data,
+                    mime_type = EXCLUDED.mime_type,
+                    updated_at = NOW()
+                """,
+                (
+                    company_id,
+                    psycopg2.Binary(image_data),
+                    allowed_types[extension],
+                )
+            )
+
+            conn.commit()
+
+        flash(
+            f"Logo für {company['name']} wurde gespeichert.",
+            "success"
+        )
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        conn.close()
+
+    return redirect(url_for("pejo_control_companies"))
+
 # PEJO Control Center – oporavak testnog administratora Demo9
 @app.route("/pejo-control/demo9/reset-pin", methods=["POST"])
 def pejo_control_demo9_reset_pin():
