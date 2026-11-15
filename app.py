@@ -145,21 +145,6 @@ def init_db():
         """
     )
 
-
- def init_db():
-    conn = get_db()
-    cur = conn.cursor()
-
-     cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS companies (
-            id SERIAL PRIMARY KEY,
-            name TEXT UNIQUE NOT NULL,
-            created_at TIMESTAMP DEFAULT NOW()
-        )
-        """
-    )
-
     # PEJO Control Center – individueller App-Name pro Firma
     cur.execute(
         """
