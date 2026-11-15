@@ -152,6 +152,18 @@ def init_db():
         ADD COLUMN IF NOT EXISTS app_name TEXT
         """
     )
+    # PEJO Control Center – Firmenlogos dauerhaft in PostgreSQL speichern
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS company_logos (
+            company_id INTEGER PRIMARY KEY REFERENCES companies(id) ON DELETE CASCADE,
+            image_data BYTEA NOT NULL,
+            mime_type TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT NOW()
+        )
+        """
+    )
+
 
     # Firmenfreigabe fuer PEJO BaustellenManager
     # Bestehende Firmen bleiben aktiv.
