@@ -1418,6 +1418,8 @@ def login():
                   AND LOWER(u.name) = LOWER(%s)
                   AND u.pin = %s
                   AND c.is_active = TRUE
+                  AND u.is_active = TRUE
+                 
                 LIMIT 1
                 """,
                 (company, name, pin),
