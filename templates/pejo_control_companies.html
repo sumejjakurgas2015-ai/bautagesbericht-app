@@ -105,17 +105,15 @@
             <tbody>
                 {% for company in companies %}
                 <tr>
-                   <td>{{ company.id }}</td>
-                   <td>{{ company.name }}</td>
                    <td>
-    {% if company.id == 17 %}
-        <span style="color:#d4af37;">
-            🔒 PEJO BaustellenManager
-        </span>
-    {% else %}
+    {{ company.name }}
+
+    {% if company.id == 16 and company.name|lower == 'demo9' %}
         <form
             method="POST"
-            action="{{ url_for('pejo_control_company_app_name', company_id=company.id) }}"
+            action="{{ url_for('pejo_control_demo9_reset_pin') }}"
+            autocomplete="off"
+            style="margin-top:10px;"
         >
             <input
                 type="hidden"
@@ -124,19 +122,20 @@
             >
 
             <input
-                type="text"
-                name="app_name"
-                value="{{ company.app_name or 'PEJO BaustellenManager' }}"
-                maxlength="100"
+                type="password"
+                name="new_pin"
+                placeholder="Neue PIN (4–12 Ziffern)"
+                minlength="4"
+                maxlength="12"
+                pattern="[0-9]{4,12}"
+                autocomplete="new-password"
                 required
                 style="padding:8px;border-radius:6px;border:1px solid #666;"
             >
 
-            <button
-                type="submit"
-                style="background:#d4af37;color:#111;padding:8px 12px;border:0;border-radius:6px;cursor:pointer;"
-            >
-                💾 Speichern
+            <button type="submit"
+                    style="background:#d4af37;color:#111;padding:8px 12px;border:0;border-radius:6px;cursor:pointer;">
+                🔑 Neue PIN setzen
             </button>
         </form>
     {% endif %}
