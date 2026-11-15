@@ -145,23 +145,12 @@ def init_db():
         """
     )
 
-    # PEJO Control Center – Firmenlogos dauerhaft in PostgreSQL speichern
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS company_logos (
-            company_id INTEGER PRIMARY KEY REFERENCES companies(id) ON DELETE CASCADE,
-            image_data BYTEA NOT NULL,
-            mime_type TEXT NOT NULL,
-            updated_at TIMESTAMP DEFAULT NOW()
-        )
-        """
-    )
 
-   def init_db():
+ def init_db():
     conn = get_db()
     cur = conn.cursor()
 
-    cur.execute(
+     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS companies (
             id SERIAL PRIMARY KEY,
