@@ -108,8 +108,39 @@
                    <td>{{ company.id }}</td>
                    <td>{{ company.name }}</td>
                    <td>
-                       {{ company.app_name or 'PEJO BaustellenManager' }}
-                    </td>
+    {% if company.id == 17 %}
+        <span style="color:#d4af37;">
+            🔒 PEJO BaustellenManager
+        </span>
+    {% else %}
+        <form
+            method="POST"
+            action="{{ url_for('pejo_control_company_app_name', company_id=company.id) }}"
+        >
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ csrf_token() }}"
+            >
+
+            <input
+                type="text"
+                name="app_name"
+                value="{{ company.app_name or 'PEJO BaustellenManager' }}"
+                maxlength="100"
+                required
+                style="padding:8px;border-radius:6px;border:1px solid #666;"
+            >
+
+            <button
+                type="submit"
+                style="background:#d4af37;color:#111;padding:8px 12px;border:0;border-radius:6px;cursor:pointer;"
+            >
+                💾 Speichern
+            </button>
+        </form>
+    {% endif %}
+</td>
 
                     <td>
                         {% if company.created_at %}
