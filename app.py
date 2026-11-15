@@ -2563,8 +2563,9 @@ def detail(report_id):
         return "Bericht nicht gefunden", 404
 
     return render_template("detail.html", report=report)
+    
 
-
+@app.route("/users")
 def users_list():
     if not is_logged_in():
         return redirect(url_for("login"))
