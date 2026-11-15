@@ -1040,6 +1040,63 @@ def pejo_control_company_toggle(company_id):
 
     return redirect(url_for("pejo_control_companies"))
 
+# PEJO Control Center – naziv aplikacije za pojedinu firmu
+@app.route("/pejo-control/company/<int:company_id>/app-name", methods=["POST"])
+def pejo_control_company_app_name(company_id):
+    from flask_wtf.csrf import validate_csrf
+    from wtforms.validators import ValidationError
+
+    if not is_pejo_owner():
+        abort(403)
+
+    try:
+        validate_csrf(request.form.get("csrf_token", ""))
+    except ValidationError:
+        abort(400, description="Ungültiges Sicherheitstoken.")
+
+    if company_id == PEJO_OWNER_COMPANY_ID:
+        flash("Der App-Name der Inhaberfirma ist geschützt.", "error")
+        return redirect(url_for("pejo_control_companies"))
+
+    app_name = request.form.get("app_name", "").strip()
+
+    if not app_name or len(app_name) > 100:
+        flash("Der App-Name muss zwischen 1 und 100 Zeichen lang sein.", "error")
+        return redirect(url_for("pejo_control_companies"))
+
+    conn = get_db()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                UPDATE companies
+                SET app_name = %s
+                WHERE id = %s
+                RETURNING name
+            """, (app_name, company_id))
+
+            company = cur.fetchone()
+
+            if company is None:
+                conn.rollback()
+                abort(404)
+
+            conn.commit()
+
+        flash(
+            f"App-Name für {company['name']} wurde gespeichert.",
+            "success"
+        )
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        conn.close()
+
+    return redirect(url_for("pejo_control_companies"))
+
 # PEJO Control Center – sigurna odjava
 @app.route("/pejo-control/logout", methods=["POST"])
 def pejo_control_logout():
