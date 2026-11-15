@@ -1124,6 +1124,67 @@ def pejo_control_company_app_name(company_id):
 
     return redirect(url_for("pejo_control_companies"))
 
+# PEJO Control Center – oporavak testnog administratora Demo9
+@app.route("/pejo-control/demo9/reset-pin", methods=["POST"])
+def pejo_control_demo9_reset_pin():
+    from flask_wtf.csrf import validate_csrf
+    from wtforms.validators import ValidationError
+
+    if not is_pejo_owner():
+        abort(403)
+
+    try:
+        validate_csrf(request.form.get("csrf_token", ""))
+    except ValidationError:
+        abort(400, description="Ungültiges Sicherheitstoken.")
+
+    new_pin = (request.form.get("new_pin") or "").strip()
+
+    if not new_pin.isdigit() or not 4 <= len(new_pin) <= 12:
+        flash("Die PIN muss aus 4 bis 12 Ziffern bestehen.", "error")
+        return redirect(url_for("pejo_control_companies"))
+
+    conn = get_db()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT u.id
+                FROM users u
+                JOIN companies c ON c.id = u.company_id
+                WHERE c.id = %s
+                  AND LOWER(c.name) = LOWER(%s)
+                  AND u.role = 'admin'
+                """,
+                (16, "Demo9")
+            )
+
+            admins = cur.fetchall()
+
+            if len(admins) != 1:
+                conn.rollback()
+                flash("Demo9-Testadministrator nicht eindeutig gefunden.", "error")
+                return redirect(url_for("pejo_control_companies"))
+
+            cur.execute(
+                "UPDATE users SET pin = %s WHERE id = %s AND company_id = %s",
+                (new_pin, admins[0]["id"], 16)
+            )
+
+            conn.commit()
+
+        flash("Die PIN des Demo9-Testadministrators wurde geändert.", "success")
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        conn.close()
+
+    return redirect(url_for("pejo_control_companies"))
+
 # PEJO Control Center – sigurna odjava
 @app.route("/pejo-control/logout", methods=["POST"])
 def pejo_control_logout():
