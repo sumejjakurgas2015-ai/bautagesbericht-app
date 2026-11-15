@@ -15,6 +15,7 @@ from psycopg2.extras import RealDictCursor
 from flask import (
     Flask,
     render_template,
+    render_template_string,
     request,
     redirect,
     url_for,
@@ -2600,6 +2601,81 @@ def users_list():
         conn.close()
 
     return render_template("users.html", users=users)
+
+
+@app.route("/users/add", methods=["GET", "POST"])
+def users_add():
+    if not is_logged_in():
+        return redirect(url_for("login"))
+    if not is_admin():
+        abort(403)
+
+    if request.method == "POST":
+        try:
+            validate_csrf(request.form.get("csrf_token", ""))
+        except Exception:
+            abort(400, description="Ungültiger CSRF-Token")
+
+        name = (request.form.get("name") or "").strip()
+        pin = (request.form.get("pin") or "").strip()
+
+        if not name or len(name) > 100:
+            flash("Bitte einen Namen mit maximal 100 Zeichen eingeben.", "error")
+        elif not pin.isdigit() or not 4 <= len(pin) <= 12:
+            flash("Die PIN muss aus 4 bis 12 Ziffern bestehen.", "error")
+        else:
+            conn = get_db()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT id FROM users WHERE company_id = %s AND LOWER(name) = LOWER(%s)",
+                        (current_company_id(), name),
+                    )
+                    if cur.fetchone():
+                        flash("Dieser Mitarbeitername ist bereits vergeben.", "error")
+                    else:
+                        cur.execute(
+                            """
+                            INSERT INTO users (name, pin, role, company_id, is_active)
+                            VALUES (%s, %s, 'worker', %s, TRUE)
+                            """,
+                            (name, pin, current_company_id()),
+                        )
+                        conn.commit()
+                        flash("Mitarbeiter erfolgreich hinzugefügt.", "success")
+                        return redirect(url_for("users_list"))
+            except Exception:
+                conn.rollback()
+                app.logger.exception("Fehler beim Anlegen eines Mitarbeiters")
+                flash("Mitarbeiter konnte nicht angelegt werden.", "error")
+            finally:
+                conn.close()
+
+    return render_template_string(
+        """
+        {% extends 'base.html' %}
+        {% block content %}
+        <div style="max-width:520px;margin:30px auto;padding:25px;background:#17233b;color:white;border-radius:14px;">
+            <h2>+ Neuer Mitarbeiter</h2>
+            <form method="POST" action="{{ url_for('users_add') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label for="name">Name</label><br>
+                <input id="name" name="name" required maxlength="100" autocomplete="off"
+                       value="{{ request.form.get('name', '') }}"
+                       style="width:100%;box-sizing:border-box;padding:10px;margin:8px 0 18px;"><br>
+                <label for="pin">PIN (4–12 Ziffern)</label><br>
+                <input id="pin" name="pin" type="password" required minlength="4" maxlength="12"
+                       inputmode="numeric" autocomplete="new-password"
+                       style="width:100%;box-sizing:border-box;padding:10px;margin:8px 0 18px;"><br>
+                <button type="submit" style="background:#ed1c24;color:white;border:0;padding:12px 18px;border-radius:7px;cursor:pointer;">
+                    Mitarbeiter speichern
+                </button>
+                <a href="{{ url_for('users_list') }}" style="color:white;margin-left:14px;">Abbrechen</a>
+            </form>
+        </div>
+        {% endblock %}
+        """
+    )
 
 
 @app.route("/users/<int:user_id>/deactivate", methods=["POST"])
