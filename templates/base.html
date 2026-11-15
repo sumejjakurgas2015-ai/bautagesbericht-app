@@ -4,7 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
-  <title>{{ app_name }}</title>
+  <title>
+    {% if user_id %}
+      {{ app_name }}
+    {% else %}
+      BaustellenManager
+    {% endif %}
+  </title>
 
   <link rel="manifest" href="/static/manifest.json">
   <link rel="icon" href="/static/icon-192.png">
@@ -160,12 +166,30 @@
       font-weight: 800;
       color: #e9efff;
       letter-spacing: .3px;
+      text-align: center;
     }
 
     .splash-subtitle{
       margin-top: 6px;
       font-size: 13px;
       color: #9fb0d0;
+      text-align: center;
+    }
+
+    .powered-by{
+      display:block;
+      margin-top:4px;
+      font-size:11px;
+      font-weight:500;
+      letter-spacing:.4px;
+      color:#d4af37;
+      opacity:.9;
+    }
+
+    .brand-name{
+      display:flex;
+      flex-direction:column;
+      line-height:1.3;
     }
 
     @media (max-width: 700px){
@@ -180,56 +204,131 @@
     }
   </style>
 </head>
+
 <body>
+
+  <!-- Splash screen -->
   <div id="app-splash">
+
     <img
       src="{{ url_for('static', filename='logo.png') }}"
       alt="Bautagesbericht Logo"
       class="splash-logo"
     >
-   <div class="splash-title">{{ app_name }}</div>
-    <div class="splash-subtitle">Digitaler Tagesbericht</div>
+
+    <div class="splash-title">
+      {% if user_id %}
+        {{ app_name }}
+      {% else %}
+        BaustellenManager
+      {% endif %}
+    </div>
+
+    {% if not user_id %}
+      <div class="powered-by">
+        Powered by PEJO
+      </div>
+    {% endif %}
+
+    <div class="splash-subtitle">
+      Digitaler Tagesbericht
+    </div>
+
   </div>
 
+  <!-- Hauptbereich -->
   <div class="wrap">
+
     <div class="topbar">
+
       <div class="brand">
-        <img src="{{ url_for('static', filename='logo.png') }}"
-             alt="Logo"
-             style="height:34px; width:auto; border-radius:8px;">
-        <span>{{ app_name }}</span>
+
+        <img
+          src="{{ url_for('static', filename='logo.png') }}"
+          alt="Logo"
+          style="height:34px; width:auto; border-radius:8px;"
+        >
+
+        <span class="brand-name">
+
+          {% if user_id %}
+
+            {{ app_name }}
+
+          {% else %}
+
+            BaustellenManager
+
+            <small class="powered-by">
+              Powered by PEJO
+            </small>
+
+          {% endif %}
+
+        </span>
+
       </div>
 
       <div class="nav-links">
+
         {% if user_id %}
+
           <span style="opacity:.8;">
             👷 {{ user_name }}
           </span>
-          <a href="{{ url_for('list_reports') }}">Berichte</a>
-          <a href="{{ url_for('users_list') }}">Mitarbeiter</a>
-          <a class="btn-logout" href="{{ url_for('logout') }}">Logout</a>
+
+          <a href="{{ url_for('list_reports') }}">
+            Berichte
+          </a>
+
+          <a href="{{ url_for('users_list') }}">
+            Mitarbeiter
+          </a>
+
+          <a class="btn-logout" href="{{ url_for('logout') }}">
+            Logout
+          </a>
+
         {% else %}
-          <a href="{{ url_for('login') }}">Login</a>
+
+          <a href="{{ url_for('login') }}">
+            Login
+          </a>
+
         {% endif %}
+
       </div>
+
     </div>
 
     <div class="content">
+
       {% with messages = get_flashed_messages(with_categories=true) %}
+
         {% if messages %}
+
           {% for category, msg in messages %}
-            <div class="flash {{ category }}">{{ msg }}</div>
+
+            <div class="flash {{ category }}">
+              {{ msg }}
+            </div>
+
           {% endfor %}
+
         {% endif %}
+
       {% endwith %}
 
       {% block content %}{% endblock %}
+
     </div>
+
   </div>
 
   <script>
     window.addEventListener("load", function () {
       const splash = document.getElementById("app-splash");
+
       setTimeout(function () {
         splash.classList.add("hide");
       }, 700);
@@ -237,5 +336,6 @@
   </script>
 
   <script src="/static/notifications.js"></script>
+
 </body>
 </html>
