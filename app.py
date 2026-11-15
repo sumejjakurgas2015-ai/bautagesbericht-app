@@ -978,7 +978,7 @@ def pejo_control_companies():
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT id, name, is_active, created_at
+                SELECT id, name, app_name, is_active, created_at
                 FROM companies
                 ORDER BY created_at DESC, id DESC
             """)
