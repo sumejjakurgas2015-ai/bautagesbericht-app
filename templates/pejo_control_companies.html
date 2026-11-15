@@ -287,9 +287,34 @@
 
                             {% else %}
 
-                                <div class="small-note">
-                                    Logo hochladen – in Vorbereitung
-                                </div>
+                                <form
+    method="POST"
+    action="{{ url_for('pejo_control_company_logo', company_id=company.id) }}"
+    enctype="multipart/form-data"
+    class="company-form"
+>
+    <input
+        type="hidden"
+        name="csrf_token"
+        value="{{ csrf_token() }}"
+    >
+
+    <input
+        type="file"
+        name="logo"
+        accept=".png,.jpg,.jpeg,.webp"
+        required
+        style="max-width:220px;"
+    >
+
+    <div class="small-note">
+        PNG, JPG oder WEBP – maximal 1 MB
+    </div>
+
+    <button type="submit" class="btn-save">
+        📷 Logo hochladen
+    </button>
+</form>
 
                             {% endif %}
 
