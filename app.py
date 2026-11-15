@@ -462,22 +462,42 @@ def check_company_activation():
         return None
 
     conn = get_db()
+
     try:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT 1
-                FROM companies
-                WHERE id = %s
-                  AND is_active = TRUE
+                SELECT
+                    c.is_active AS company_active,
+                    u.is_active AS user_active
+                FROM users u
+                JOIN companies c ON c.id = u.company_id
+                WHERE u.id = %s
+                  AND u.company_id = %s
+                LIMIT 1
                 """,
-                (current_company_id(),),
+                (
+                    session.get("user_id"),
+                    current_company_id(),
+                ),
             )
-            company = cur.fetchone()
+
+            result = cur.fetchone()
+
     finally:
         conn.close()
 
-    if not company:
+    # Benutzer existiert nicht mehr oder wurde deaktiviert
+    if not result or not result["user_active"]:
+        session.clear()
+        flash(
+            "Ihr Benutzerkonto wurde deaktiviert. Bitte kontaktieren Sie Ihren Administrator.",
+            "error",
+        )
+        return redirect(url_for("login"))
+
+    # Firma wurde deaktiviert
+    if not result["company_active"]:
         session.clear()
         flash(
             "Ihre Firma ist nicht freigeschaltet. Bitte kontaktieren Sie PEJO.",
