@@ -35,6 +35,33 @@
     padding: 8px 12px;
 }
 
+.remove-button {
+    display: inline-block;
+    background: #8b1e2d;
+    color: white;
+    padding: 8px 12px;
+    border: 1px solid #c84a5b;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.remove-button:hover {
+    background: #b3263b;
+}
+
+.action-box {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.action-box form {
+    margin: 0;
+}
+
 .table-wrapper {
     overflow-x: auto;
 }
@@ -144,12 +171,40 @@
 
                     <td>
                         {% if u.role != 'admin' %}
-                            <a
-                                href="{{ url_for('users_permissions', user_id=u.id) }}"
-                                class="edit-button"
-                            >
-                                Berechtigungen bearbeiten
-                            </a>
+
+                            <div class="action-box">
+
+                                <a
+                                    href="{{ url_for('users_permissions', user_id=u.id) }}"
+                                    class="edit-button"
+                                >
+                                    Berechtigungen bearbeiten
+                                </a>
+
+                                {% if u.is_active %}
+                                <form
+                                    action="{{ url_for('users_deactivate', user_id=u.id) }}"
+                                    method="POST"
+                                    onsubmit="return confirm('Möchten Sie diesen Mitarbeiter wirklich entfernen? Alle bisherigen Dokumente bleiben erhalten.');"
+                                >
+                                    <input
+                                        type="hidden"
+                                        name="csrf_token"
+                                        value="{{ csrf_token() }}"
+                                    >
+
+                                    <button type="submit" class="remove-button">
+                                        🗑️ Mitarbeiter entfernen
+                                    </button>
+                                </form>
+                                {% else %}
+                                    <span class="permission-badge">
+                                        Deaktiviert
+                                    </span>
+                                {% endif %}
+
+                            </div>
+
                         {% else %}
                             —
                         {% endif %}
