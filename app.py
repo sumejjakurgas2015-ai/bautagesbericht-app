@@ -145,6 +145,32 @@ def init_db():
         """
     )
 
+    # PEJO Control Center – Firmenlogos dauerhaft in PostgreSQL speichern
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS company_logos (
+            company_id INTEGER PRIMARY KEY REFERENCES companies(id) ON DELETE CASCADE,
+            image_data BYTEA NOT NULL,
+            mime_type TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT NOW()
+        )
+        """
+    )
+
+   def init_db():
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS companies (
+            id SERIAL PRIMARY KEY,
+            name TEXT UNIQUE NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+        )
+        """
+    )
+
     # PEJO Control Center – individueller App-Name pro Firma
     cur.execute(
         """
@@ -152,6 +178,47 @@ def init_db():
         ADD COLUMN IF NOT EXISTS app_name TEXT
         """
     )
+
+    # Firmenfreigabe fuer PEJO BaustellenManager
+    # Bestehende Firmen bleiben aktiv.
+    cur.execute(
+        """
+        ALTER TABLE companies
+        ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE
+        """
+    )
+
+    # PEJO Control Center – Abonnements und Testphasen
+    cur.execute("""
+    ALTER TABLE companies
+    ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'none'
+    """)
+
+    cur.execute("""
+    ALTER TABLE companies
+    ADD COLUMN IF NOT EXISTS trial_start TIMESTAMP
+    """)
+
+    cur.execute("""
+    ALTER TABLE companies
+    ADD COLUMN IF NOT EXISTS trial_end TIMESTAMP
+    """)
+
+    # Neue Registrierungen werden spaeter auf FALSE gesetzt.
+    # Bestehende Firmen bleiben unveraendert.
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            pin TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'worker',
+            company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+            created_at TIMESTAMP DEFAULT NOW()
+        )
+        """
+    ) 
 
     # Firmenfreigabe fuer PEJO BaustellenManager
     # Bestehende Firmen bleiben aktiv.
