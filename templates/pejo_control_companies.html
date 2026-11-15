@@ -46,6 +46,7 @@
             padding: 14px;
             text-align: left;
             border-bottom: 1px solid #344054;
+            vertical-align: top;
         }
 
         th {
@@ -61,6 +62,81 @@
             color: #ff8585;
             font-weight: bold;
         }
+
+        .protected {
+            color: #d4af37;
+            font-weight: bold;
+        }
+
+        .app-name {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #666;
+            background: #ffffff;
+            color: #111111;
+            box-sizing: border-box;
+        }
+
+        button {
+            padding: 8px 12px;
+            border: 0;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .btn-save {
+            background: #d4af37;
+            color: #111;
+        }
+
+        .btn-danger {
+            background: #b91c1c;
+            color: white;
+        }
+
+        .btn-success {
+            background: #15803d;
+            color: white;
+        }
+
+        .small-note {
+            color: #b8c4d6;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        .company-form {
+            margin-top: 10px;
+        }
+
+        .company-form input {
+            max-width: 230px;
+        }
+
+        .company-form button {
+            margin-top: 6px;
+        }
+
+        .logo-box {
+            margin-top: 12px;
+            padding: 10px;
+            border: 1px solid #344054;
+            border-radius: 8px;
+            background: #152131;
+        }
+
+        .logo-title {
+            font-weight: bold;
+            color: #d4af37;
+            margin-bottom: 6px;
+        }
     </style>
 </head>
 
@@ -72,31 +148,33 @@
     </a>
 
     <h1>🏢 Firmenverwaltung</h1>
+
     {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-        {% for category, message in messages %}
-            <div style="
-                margin: 15px 0;
-                padding: 12px 16px;
-                border-radius: 8px;
-                background: {{ '#14532d' if category == 'success' else '#7f1d1d' }};
-                color: white;
-            ">
-                {{ message }}
-            </div>
-        {% endfor %}
-    {% endif %}
-{% endwith %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div style="
+                    margin: 15px 0;
+                    padding: 12px 16px;
+                    border-radius: 8px;
+                    background: {{ '#14532d' if category == 'success' else '#7f1d1d' }};
+                    color: white;
+                ">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
     <p>Registrierte Firmen und Freigabestatus</p>
 
     <div class="table-box">
         <table>
             <thead>
                 <tr>
-                   <th>ID</th>
-                   <th>Firma</th>
-                   <th>App-Name</th>
-                   <th>Registriert am</th> 
+                    <th>ID</th>
+                    <th>Firma</th>
+                    <th>App-Name</th>
+                    <th>Registriert am</th>
                     <th>Status</th>
                     <th>Aktion</th>
                 </tr>
@@ -104,43 +182,122 @@
 
             <tbody>
                 {% for company in companies %}
+
                 <tr>
-                   <td>
-    {{ company.name }}
 
-    {% if company.id == 16 and company.name|lower == 'demo9' %}
-        <form
-            method="POST"
-            action="{{ url_for('pejo_control_demo9_reset_pin') }}"
-            autocomplete="off"
-            style="margin-top:10px;"
-        >
-            <input
-                type="hidden"
-                name="csrf_token"
-                value="{{ csrf_token() }}"
-            >
+                    <!-- ID -->
+                    <td>
+                        {{ company.id }}
+                    </td>
 
-            <input
-                type="password"
-                name="new_pin"
-                placeholder="Neue PIN (4–12 Ziffern)"
-                minlength="4"
-                maxlength="12"
-                pattern="[0-9]{4,12}"
-                autocomplete="new-password"
-                required
-                style="padding:8px;border-radius:6px;border:1px solid #666;"
-            >
+                    <!-- Firma -->
+                    <td>
+                        <strong>{{ company.name }}</strong>
 
-            <button type="submit"
-                    style="background:#d4af37;color:#111;padding:8px 12px;border:0;border-radius:6px;cursor:pointer;">
-                🔑 Neue PIN setzen
-            </button>
-        </form>
-    {% endif %}
-</td>
+                        {% if company.id == 16 and company.name|lower == 'demo9' %}
 
+                            <form
+                                method="POST"
+                                action="{{ url_for('pejo_control_demo9_reset_pin') }}"
+                                autocomplete="off"
+                                class="company-form"
+                            >
+                                <input
+                                    type="hidden"
+                                    name="csrf_token"
+                                    value="{{ csrf_token() }}"
+                                >
+
+                                <input
+                                    type="password"
+                                    name="new_pin"
+                                    placeholder="Neue PIN (4–12 Ziffern)"
+                                    minlength="4"
+                                    maxlength="12"
+                                    pattern="[0-9]{4,12}"
+                                    autocomplete="new-password"
+                                    required
+                                >
+
+                                <br>
+
+                                <button type="submit" class="btn-save">
+                                    🔑 Neue PIN setzen
+                                </button>
+                            </form>
+
+                        {% endif %}
+                    </td>
+
+                    <!-- App-Name -->
+                    <td>
+
+                        {% if company.id == 17 %}
+
+                            <div class="app-name">
+                                PEJO BaustellenManager
+                            </div>
+
+                            <span class="protected">
+                                🔒 Geschützt
+                            </span>
+
+                        {% else %}
+
+                            <form
+                                method="POST"
+                                action="{{ url_for('pejo_control_company_app_name', company_id=company.id) }}"
+                                class="company-form"
+                            >
+                                <input
+                                    type="hidden"
+                                    name="csrf_token"
+                                    value="{{ csrf_token() }}"
+                                >
+
+                                <input
+                                    type="text"
+                                    name="app_name"
+                                    value="{{ company.app_name or 'PEJO BaustellenManager' }}"
+                                    maxlength="100"
+                                    required
+                                >
+
+                                <br>
+
+                                <button type="submit" class="btn-save">
+                                    💾 Speichern
+                                </button>
+                            </form>
+
+                        {% endif %}
+
+                        <!-- Firmenlogo -->
+                        <div class="logo-box">
+
+                            <div class="logo-title">
+                                🖼️ Firmenlogo
+                            </div>
+
+                            {% if company.id == 17 %}
+
+                                <span class="protected">
+                                    🔒 PEJO Logo geschützt
+                                </span>
+
+                            {% else %}
+
+                                <div class="small-note">
+                                    Logo hochladen – in Vorbereitung
+                                </div>
+
+                            {% endif %}
+
+                        </div>
+
+                    </td>
+
+                    <!-- Registriert am -->
                     <td>
                         {% if company.created_at %}
                             {{ company.created_at.strftime('%d.%m.%Y') }}
@@ -149,49 +306,71 @@
                         {% endif %}
                     </td>
 
+                    <!-- Status -->
                     <td>
                         {% if company.is_active %}
-                            <span class="active">🟢 Aktiv</span>
+                            <span class="active">
+                                🟢 Aktiv
+                            </span>
                         {% else %}
-                            <span class="inactive">🔴 Inaktiv</span>
+                            <span class="inactive">
+                                🔴 Inaktiv
+                            </span>
                         {% endif %}
                     </td>
-                    <td>
-    {% if company.id == 17 %}
-        <span style="color: #d4af37;">
-            🔒 Geschützt
-        </span>
-    {% else %}
-        <form
-            method="POST"
-            action="{{ url_for('pejo_control_company_toggle', company_id=company.id) }}"
-            onsubmit="return confirm('Möchten Sie den Status dieser Firma wirklich ändern?');"
-        >
-            <input
-                type="hidden"
-                name="csrf_token"
-                value="{{ csrf_token() }}"
-            >
 
-            {% if company.is_active %}
-                <button type="submit"
-                        style="background:#b91c1c;color:white;padding:8px 12px;border:0;border-radius:6px;cursor:pointer;">
-                    🔴 Deaktivieren
-                </button>
-            {% else %}
-                <button type="submit"
-                        style="background:#15803d;color:white;padding:8px 12px;border:0;border-radius:6px;cursor:pointer;">
-                    🟢 Aktivieren
-                </button>
-            {% endif %}
-        </form>
-    {% endif %}
-</td>
+                    <!-- Aktion -->
+                    <td>
+
+                        {% if company.id == 17 %}
+
+                            <span class="protected">
+                                🔒 Geschützt
+                            </span>
+
+                        {% else %}
+
+                            <form
+                                method="POST"
+                                action="{{ url_for('pejo_control_company_toggle', company_id=company.id) }}"
+                                onsubmit="return confirm('Möchten Sie den Status dieser Firma wirklich ändern?');"
+                            >
+                                <input
+                                    type="hidden"
+                                    name="csrf_token"
+                                    value="{{ csrf_token() }}"
+                                >
+
+                                {% if company.is_active %}
+
+                                    <button type="submit" class="btn-danger">
+                                        🔴 Deaktivieren
+                                    </button>
+
+                                {% else %}
+
+                                    <button type="submit" class="btn-success">
+                                        🟢 Aktivieren
+                                    </button>
+
+                                {% endif %}
+
+                            </form>
+
+                        {% endif %}
+
+                    </td>
+
                 </tr>
+
                 {% else %}
+
                 <tr>
-                    <td colspan="6">Keine Firmen vorhanden.</td>
+                    <td colspan="6">
+                        Keine Firmen vorhanden.
+                    </td>
                 </tr>
+
                 {% endfor %}
             </tbody>
         </table>
