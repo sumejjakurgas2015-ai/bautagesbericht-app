@@ -2567,6 +2567,55 @@ def detail(report_id):
 
 def users_list():
 
+
+@app.route("/users/<int:user_id>/deactivate", methods=["POST"])
+def users_deactivate(user_id):
+    if not is_logged_in():
+        return redirect(url_for("login"))
+
+    if not is_admin():
+        abort(403)
+
+    try:
+        validate_csrf(request.form.get("csrf_token", ""))
+    except Exception:
+        abort(400, description="Ungültiger CSRF-Token")
+
+    # Administrator darf sich nicht selbst deaktivieren
+    if int(user_id) == int(session.get("user_id")):
+        flash("Sie können Ihr eigenes Konto nicht entfernen.", "error")
+        return redirect(url_for("users_list"))
+
+    conn = get_db()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE users
+                SET is_active = FALSE
+                WHERE id = %s
+                  AND company_id = %s
+                  AND role <> 'admin'
+                  AND is_active = TRUE
+                RETURNING id
+                """,
+                (user_id, current_company_id()),
+            )
+
+            updated = cur.fetchone()
+            conn.commit()
+
+        if updated:
+            flash("Mitarbeiter wurde entfernt. Alle Dokumente bleiben erhalten.", "success")
+        else:
+            flash("Mitarbeiter nicht gefunden oder kann nicht entfernt werden.", "error")
+
+    finally:
+        conn.close()
+
+    return redirect(url_for("users_list"))
+
 @app.route("/users/<int:user_id>/permissions", methods=["GET", "POST"])
 def users_permissions(user_id):
     if not is_logged_in():
