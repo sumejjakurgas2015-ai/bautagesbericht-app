@@ -248,6 +248,12 @@ def init_db():
     )
 
     add_column_if_missing(cur, "users", "role", "TEXT DEFAULT 'worker'")
+    add_column_if_missing(
+    cur,
+    "users",
+    "is_active",
+    "BOOLEAN NOT NULL DEFAULT TRUE"
+) 
     cur.execute("UPDATE users SET role = 'worker' WHERE role IS NULL")
 
     cur.execute(
@@ -2537,97 +2543,7 @@ def detail(report_id):
     return render_template("detail.html", report=report)
 
 
-@app.route("/users")
 def users_list():
-    if not is_logged_in():
-        return redirect(url_for("login"))
-
-    if not is_admin():
-        abort(403)
-
-    try:
-        company_id = current_company_id()
-
-        conn = get_db()
-        cur = conn.cursor()
-
-        cur.execute(
-            """
-            SELECT id, name, role, permissions, company_id, created_at
-            FROM users
-            WHERE company_id = %s
-            ORDER BY id DESC
-            """,
-            (company_id,),
-        )
-        users = cur.fetchall()
-        cur.close()
-        conn.close()
-
-        return render_template("users.html", users=users)
-
-    except Exception as e:
-        return f"USERS ERROR: {str(e)}", 500
-
-
-@app.route("/users/add", methods=["GET", "POST"])
-def users_add():
-    if not is_logged_in():
-        return redirect(url_for("login"))
-
-    if not is_admin():
-        abort(403)
-
-    try:
-        company_id = current_company_id()
-
-        if request.method == "POST":
-            try:
-                validate_csrf(request.form.get("csrf_token", ""))
-            except Exception:
-                abort(400, description="Ungültiger CSRF-Token")
-            name = (request.form.get("name") or "").strip()
-            pin = (request.form.get("pin") or "").strip()
-            role = "worker"
-            permissions = sorted(set(request.form.getlist("permissions")) & set(PERMISSION_MODULES))
-
-            if not name or not pin:
-                flash("Bitte Name und PIN eingeben.", "error")
-                return redirect(url_for("users_add"))
-
-            conn = get_db()
-            cur = conn.cursor()
-
-            try:
-                reset_sequences(cur)
-                cur.execute(
-                    """
-                    INSERT INTO users (name, pin, role, company_id, permissions)
-                    VALUES (%s, %s, %s, %s, %s)
-                    ON CONFLICT (company_id, name) DO NOTHING
-                    """,
-                    (name, pin, role, company_id, permissions),
-                )
-                if cur.rowcount == 0:
-                    conn.rollback()
-                    flash("Name bereits vorhanden. Bitte vorhandenen Mitarbeiter bearbeiten.", "warning")
-                    return redirect(url_for("users_list"))
-                conn.commit()
-                flash("Benutzer gespeichert.", "success")
-            except Exception as e:
-                conn.rollback()
-                return f"USERS ADD POST ERROR: {str(e)}", 500
-            finally:
-                cur.close()
-                conn.close()
-
-            return redirect(url_for("users_list"))
-
-        return render_template("users_add.html")
-
-    except Exception as e:
-        return f"USERS ADD ERROR: {str(e)}", 500
-
 
 @app.route("/users/<int:user_id>/permissions", methods=["GET", "POST"])
 def users_permissions(user_id):
