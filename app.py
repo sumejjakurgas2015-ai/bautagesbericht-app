@@ -2566,6 +2566,39 @@ def detail(report_id):
 
 
 def users_list():
+    if not is_logged_in():
+        return redirect(url_for("login"))
+
+    if not is_admin():
+        abort(403)
+
+    conn = get_db()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    id,
+                    name,
+                    role,
+                    permissions,
+                    created_at,
+                    is_active
+                FROM users
+                WHERE company_id = %s
+                  AND is_active = TRUE
+                ORDER BY name ASC
+                """,
+                (current_company_id(),),
+            )
+
+            users = cur.fetchall()
+
+    finally:
+        conn.close()
+
+    return render_template("users.html", users=users)
 
 
 @app.route("/users/<int:user_id>/deactivate", methods=["POST"])
